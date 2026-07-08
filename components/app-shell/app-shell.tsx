@@ -12,7 +12,7 @@ interface AppShellProps {
 
 export function AppShell({ children, companyName, logoUrl, userName, role }: AppShellProps) {
   return (
-    <div className="flex">
+    <div className="flex h-full">
       <Sidebar
         role={role}
         companyName={companyName}
@@ -20,9 +20,9 @@ export function AppShell({ children, companyName, logoUrl, userName, role }: App
         userName={userName}
         userRole={role}
       />
-      <div className="flex min-h-screen flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col">
         <Topbar />
-        <main className="flex-1 bg-background p-8">{children}</main>
+        <main className="flex-1 overflow-y-auto bg-background p-8">{children}</main>
       </div>
     </div>
   );
