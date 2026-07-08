@@ -25,7 +25,7 @@ export function Sidebar({ role, companyName, logoUrl, userName, userRole }: Side
   return (
     <aside
       className={cn(
-        "flex h-screen flex-col justify-between border-r border-border bg-surface transition-[width]",
+        "flex h-full flex-col justify-between border-r border-border bg-surface transition-[width]",
         collapsed ? "w-16" : "w-60",
       )}
     >
