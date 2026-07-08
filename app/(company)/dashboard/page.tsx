@@ -1,6 +1,8 @@
 import { getTenantContext } from "@/lib/getTenantContext";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 export default async function DashboardPage() {
   const ctx = await getTenantContext();
   const user = await prisma.user.findUniqueOrThrow({ where: { id: ctx.userId }, select: { name: true } });
