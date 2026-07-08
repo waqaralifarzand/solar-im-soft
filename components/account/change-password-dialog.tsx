@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { changePasswordSchema } from "@/lib/validations/account";
 import { changePassword } from "@/lib/actions/account";
+import { useZodFormErrors } from "@/lib/useZodFormErrors";
 import {
   Dialog,
   DialogContent,
@@ -19,15 +20,17 @@ export function ChangePasswordDialog({ trigger }: { trigger: React.ReactNode }) 
   const [open, setOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const { fieldErrors, validateOnSubmit, validateField, clearErrors } = useZodFormErrors(changePasswordSchema);
   const [formError, setFormError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const values = { currentPassword, newPassword };
+
   function reset() {
     setCurrentPassword("");
     setNewPassword("");
-    setFieldErrors({});
+    clearErrors();
     setFormError(null);
     setSuccess(false);
   }
@@ -36,20 +39,12 @@ export function ChangePasswordDialog({ trigger }: { trigger: React.ReactNode }) 
     e.preventDefault();
     setFormError(null);
 
-    const result = changePasswordSchema.safeParse({ currentPassword, newPassword });
-    if (!result.success) {
-      const errors: Record<string, string> = {};
-      for (const issue of result.error.issues) {
-        errors[issue.path[0] as string] = issue.message;
-      }
-      setFieldErrors(errors);
-      return;
-    }
-    setFieldErrors({});
+    const data = validateOnSubmit(values);
+    if (!data) return;
     setSubmitting(true);
 
     try {
-      await changePassword(result.data);
+      await changePassword(data);
       setSuccess(true);
       setCurrentPassword("");
       setNewPassword("");
@@ -87,6 +82,7 @@ export function ChangePasswordDialog({ trigger }: { trigger: React.ReactNode }) 
                 autoComplete="current-password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
+                onBlur={() => validateField("currentPassword", values)}
                 disabled={submitting}
               />
               {fieldErrors.currentPassword && (
@@ -102,6 +98,7 @@ export function ChangePasswordDialog({ trigger }: { trigger: React.ReactNode }) 
                 autoComplete="new-password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
+                onBlur={() => validateField("newPassword", values)}
                 disabled={submitting}
               />
               {fieldErrors.newPassword && <p className="text-xs text-destructive">{fieldErrors.newPassword}</p>}

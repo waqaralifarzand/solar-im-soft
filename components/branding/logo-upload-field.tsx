@@ -4,7 +4,8 @@ import { useRef, useState } from "react";
 import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { MAX_LOGO_FILE_BYTES } from "@/lib/logo";
+import { MAX_LOGO_FILE_BYTES, MAX_LOGO_DATA_URL_LENGTH, MAX_LOGO_DIMENSION } from "@/lib/logo";
+import { compressImageToDataUrl } from "@/lib/compressImage";
 
 interface LogoUploadFieldProps {
   value: string | null;
@@ -16,8 +17,9 @@ interface LogoUploadFieldProps {
 export function LogoUploadField({ value, onChange, companyInitial, disabled }: LogoUploadFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [compressing, setCompressing] = useState(false);
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
@@ -32,9 +34,22 @@ export function LogoUploadField({ value, onChange, companyInitial, disabled }: L
     }
 
     setError(null);
-    const reader = new FileReader();
-    reader.onload = () => onChange(reader.result as string);
-    reader.readAsDataURL(file);
+    setCompressing(true);
+    try {
+      const compressed = await compressImageToDataUrl(file, {
+        maxDimension: MAX_LOGO_DIMENSION,
+        maxDataUrlLength: MAX_LOGO_DATA_URL_LENGTH,
+      });
+      if (!compressed) {
+        setError("Couldn't shrink this image enough — try a smaller or simpler logo");
+        return;
+      }
+      onChange(compressed);
+    } catch {
+      setError("Couldn't read that image — try a different file");
+    } finally {
+      setCompressing(false);
+    }
   }
 
   return (
@@ -54,18 +69,18 @@ export function LogoUploadField({ value, onChange, companyInitial, disabled }: L
             type="button"
             variant="secondary"
             size="sm"
-            disabled={disabled}
+            disabled={disabled || compressing}
             onClick={() => inputRef.current?.click()}
           >
             <Upload size={14} className="mr-1.5" />
-            Upload logo
+            {compressing ? "Processing…" : "Upload logo"}
           </Button>
           {value && (
             <button
               type="button"
               className="text-left text-xs text-muted-foreground hover:text-destructive"
               onClick={() => onChange(null)}
-              disabled={disabled}
+              disabled={disabled || compressing}
             >
               Remove logo
             </button>

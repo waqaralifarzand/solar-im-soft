@@ -4,10 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createCompanyUserSchema } from "@/lib/validations/settings-users";
 import { createCompanyUser } from "@/lib/actions/settings-users";
+import { useZodFormErrors } from "@/lib/useZodFormErrors";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { RevealPasswordDialog } from "@/components/ui/reveal-password-dialog";
 
 export function CreateUserForm() {
@@ -15,33 +17,28 @@ export function CreateUserForm() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"MANAGER" | "CASHIER">("MANAGER");
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const { fieldErrors, validateOnSubmit, validateField, clearErrors } = useZodFormErrors(createCompanyUserSchema);
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [created, setCreated] = useState<{ email: string; tempPassword: string } | null>(null);
+
+  const values = { name, email, role };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
 
-    const result = createCompanyUserSchema.safeParse({ name, email, role });
-    if (!result.success) {
-      const errors: Record<string, string> = {};
-      for (const issue of result.error.issues) {
-        errors[issue.path[0] as string] = issue.message;
-      }
-      setFieldErrors(errors);
-      return;
-    }
-    setFieldErrors({});
+    const data = validateOnSubmit(values);
+    if (!data) return;
     setSubmitting(true);
 
     try {
-      const { tempPassword } = await createCompanyUser(result.data);
-      setCreated({ email: result.data.email, tempPassword });
+      const { tempPassword } = await createCompanyUser(data);
+      setCreated({ email: data.email, tempPassword });
       setName("");
       setEmail("");
       setRole("MANAGER");
+      clearErrors();
       router.refresh();
     } catch (error) {
       setFormError(error instanceof Error ? error.message : "Something went wrong");
@@ -56,7 +53,13 @@ export function CreateUserForm() {
         <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-4" noValidate>
           <div className="flex min-w-[160px] flex-1 flex-col gap-2">
             <Label htmlFor="userName">Name</Label>
-            <Input id="userName" value={name} onChange={(e) => setName(e.target.value)} disabled={submitting} />
+            <Input
+              id="userName"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onBlur={() => validateField("name", values)}
+              disabled={submitting}
+            />
             {fieldErrors.name && <p className="text-xs text-destructive">{fieldErrors.name}</p>}
           </div>
           <div className="flex min-w-[200px] flex-1 flex-col gap-2">
@@ -66,22 +69,22 @@ export function CreateUserForm() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onBlur={() => validateField("email", values)}
               disabled={submitting}
             />
             {fieldErrors.email && <p className="text-xs text-destructive">{fieldErrors.email}</p>}
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="userRole">Role</Label>
-            <select
+            <Select
               id="userRole"
               value={role}
               onChange={(e) => setRole(e.target.value as "MANAGER" | "CASHIER")}
               disabled={submitting}
-              className="flex h-10 rounded-input border border-border bg-white px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
             >
               <option value="MANAGER">Manager</option>
               <option value="CASHIER">Cashier</option>
-            </select>
+            </Select>
           </div>
           <Button type="submit" disabled={submitting}>
             {submitting ? "Creating…" : "Create user"}

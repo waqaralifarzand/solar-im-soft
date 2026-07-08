@@ -6,6 +6,7 @@ import { updateTaxCurrency } from "@/lib/actions/onboarding";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 
 interface StepTaxCurrencyProps {
   initialTaxRate: string;
@@ -69,19 +70,13 @@ export function StepTaxCurrency({
         </div>
         <div className="flex flex-1 flex-col gap-2">
           <Label htmlFor="currency">Currency</Label>
-          <select
-            id="currency"
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value)}
-            disabled={submitting}
-            className="flex h-10 w-full rounded-input border border-border bg-white px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
-          >
+          <Select id="currency" value={currency} onChange={(e) => setCurrency(e.target.value)} disabled={submitting}>
             {CURRENCIES.map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       </div>
 
