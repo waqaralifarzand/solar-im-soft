@@ -3,6 +3,8 @@ import { getOverviewStats } from "@/lib/queries/super-admin";
 import { StatCard } from "@/components/super/stat-card";
 import { Card } from "@/components/ui/card";
 
+export const dynamic = "force-dynamic";
+
 export default async function SuperAdminOverviewPage() {
   const stats = await getOverviewStats();
 

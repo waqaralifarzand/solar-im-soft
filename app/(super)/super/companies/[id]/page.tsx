@@ -6,6 +6,8 @@ import { StatusChip } from "@/components/ui/status-chip";
 import { CompanyStatusAction } from "@/components/super/company-status-action";
 import { UsersTable } from "@/components/super/users-table";
 
+export const dynamic = "force-dynamic";
+
 export default async function CompanyDetailPage({ params }: { params: { id: string } }) {
   const detail = await getCompanyDetail(params.id);
   if (!detail) notFound();

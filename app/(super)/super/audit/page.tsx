@@ -1,6 +1,8 @@
 import { listAuditLogs } from "@/lib/queries/super-admin";
 import { AuditTable } from "@/components/super/audit-table";
 
+export const dynamic = "force-dynamic";
+
 export default async function AuditLogPage() {
   const logs = await listAuditLogs();
 

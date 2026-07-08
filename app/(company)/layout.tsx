@@ -4,6 +4,8 @@ import { AppShell } from "@/components/app-shell/app-shell";
 import { SuspendedLockScreen } from "@/components/suspended-lock-screen";
 import { ImpersonationBanner } from "@/components/super/impersonation-banner";
 
+export const dynamic = "force-dynamic";
+
 export default async function CompanyLayout({ children }: { children: React.ReactNode }) {
   const ctx = await getTenantContext();
 
