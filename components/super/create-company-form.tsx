@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { RevealPasswordDialog } from "@/components/super/reveal-password-dialog";
+import { RevealPasswordDialog } from "@/components/ui/reveal-password-dialog";
 
 export function CreateCompanyForm() {
   const [companyName, setCompanyName] = useState("");

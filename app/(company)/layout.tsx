@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { getTenantContext } from "@/lib/getTenantContext";
 import { prisma } from "@/lib/prisma";
 import { AppShell } from "@/components/app-shell/app-shell";
@@ -12,7 +13,7 @@ export default async function CompanyLayout({ children }: { children: React.Reac
   const [company, user] = await Promise.all([
     prisma.company.findUniqueOrThrow({
       where: { id: ctx.companyId },
-      select: { name: true, logoUrl: true, status: true },
+      select: { name: true, logoUrl: true, status: true, accentColor: true, onboardingComplete: true },
     }),
     prisma.user.findUniqueOrThrow({ where: { id: ctx.userId }, select: { name: true } }),
   ]);
@@ -21,11 +22,21 @@ export default async function CompanyLayout({ children }: { children: React.Reac
     return <SuspendedLockScreen />;
   }
 
+  if (ctx.role === "ADMIN" && !company.onboardingComplete) {
+    redirect("/onboarding");
+  }
+
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-screen flex-col" style={{ "--accent": company.accentColor } as React.CSSProperties}>
       {ctx.impersonatedBy && <ImpersonationBanner companyName={company.name} />}
       <div className="min-h-0 flex-1">
-        <AppShell companyName={company.name} logoUrl={company.logoUrl} userName={user.name} role={ctx.role}>
+        <AppShell
+          companyName={company.name}
+          logoUrl={company.logoUrl}
+          userName={user.name}
+          role={ctx.role}
+          isImpersonating={!!ctx.impersonatedBy}
+        >
           {children}
         </AppShell>
       </div>

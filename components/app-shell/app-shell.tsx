@@ -8,9 +8,17 @@ interface AppShellProps {
   logoUrl: string | null;
   userName: string;
   role: Role;
+  isImpersonating?: boolean;
 }
 
-export function AppShell({ children, companyName, logoUrl, userName, role }: AppShellProps) {
+export function AppShell({
+  children,
+  companyName,
+  logoUrl,
+  userName,
+  role,
+  isImpersonating = false,
+}: AppShellProps) {
   return (
     <div className="flex h-full">
       <Sidebar
@@ -19,6 +27,7 @@ export function AppShell({ children, companyName, logoUrl, userName, role }: App
         logoUrl={logoUrl}
         userName={userName}
         userRole={role}
+        isImpersonating={isImpersonating}
       />
       <div className="flex min-h-0 flex-1 flex-col">
         <Topbar />
