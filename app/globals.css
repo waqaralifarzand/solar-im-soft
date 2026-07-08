@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #fdfcfc;
+  --surface: #f5f3f1;
+  --card: #ffffff;
+  --border: #ebe8e4;
+  --foreground: #111110;
+  --muted-foreground: #6f6b66;
+  --accent: #111110; /* overridden per-tenant at runtime from Company.accentColor */
+  --destructive: #d92d20;
+  --success: #12a150;
+  --warning: #f79009;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+}
+
+@layer base {
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.01em;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
