@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Ban, CheckCircle2, KeyRound, LogIn } from "lucide-react";
 import { suspendCompany, activateCompany, resetUserPassword, startImpersonation } from "@/lib/actions/super-admin";
-import { RevealPasswordDialog } from "@/components/super/reveal-password-dialog";
+import { RevealPasswordDialog } from "@/components/ui/reveal-password-dialog";
 import type { CompanyListRow } from "@/lib/queries/super-admin";
 
 export function CompanyRowActions({ company }: { company: CompanyListRow }) {

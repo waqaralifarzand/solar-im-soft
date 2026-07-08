@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { ChevronsLeft, ChevronsRight } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, KeyRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getNavItemsForRole } from "@/lib/nav-items";
+import { ChangePasswordDialog } from "@/components/account/change-password-dialog";
 import type { Role } from "@prisma/client";
 
 interface SidebarProps {
@@ -15,9 +15,10 @@ interface SidebarProps {
   logoUrl: string | null;
   userName: string;
   userRole: string;
+  isImpersonating: boolean;
 }
 
-export function Sidebar({ role, companyName, logoUrl, userName, userRole }: SidebarProps) {
+export function Sidebar({ role, companyName, logoUrl, userName, userRole, isImpersonating }: SidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const navItems = getNavItemsForRole(role);
@@ -32,7 +33,8 @@ export function Sidebar({ role, companyName, logoUrl, userName, userRole }: Side
       <div>
         <div className="flex h-16 items-center gap-2 px-4">
           {logoUrl ? (
-            <Image src={logoUrl} alt={companyName} width={28} height={28} className="rounded-md" />
+            // eslint-disable-next-line @next/next/no-img-element -- logoUrl may be a base64 data URI
+            <img src={logoUrl} alt={companyName} className="h-7 w-7 rounded-md object-cover" />
           ) : (
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent text-xs font-semibold text-white">
               {companyName.charAt(0).toUpperCase()}
@@ -76,14 +78,30 @@ export function Sidebar({ role, companyName, logoUrl, userName, userRole }: Side
             <p className="truncate text-xs text-muted-foreground">{userRole}</p>
           </div>
         )}
-        <button
-          type="button"
-          onClick={() => setCollapsed((v) => !v)}
-          className="flex items-center justify-center rounded-pill p-2 text-muted-foreground hover:bg-white"
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {collapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
-        </button>
+        <div className="flex items-center gap-1">
+          {!isImpersonating && (
+            <ChangePasswordDialog
+              trigger={
+                <button
+                  type="button"
+                  className="flex items-center justify-center rounded-pill p-2 text-muted-foreground hover:bg-white"
+                  aria-label="Change password"
+                  title="Change password"
+                >
+                  <KeyRound size={16} />
+                </button>
+              }
+            />
+          )}
+          <button
+            type="button"
+            onClick={() => setCollapsed((v) => !v)}
+            className="flex items-center justify-center rounded-pill p-2 text-muted-foreground hover:bg-white"
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
+          </button>
+        </div>
       </div>
     </aside>
   );

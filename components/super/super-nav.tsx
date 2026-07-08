@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { ChangePasswordDialog } from "@/components/account/change-password-dialog";
 
 const NAV_ITEMS = [
   { label: "Overview", href: "/super" },
@@ -38,9 +39,18 @@ export function SuperNav() {
           })}
         </nav>
       </div>
-      <Button variant="secondary" size="sm" onClick={() => signOut({ callbackUrl: "/login" })}>
-        Sign out
-      </Button>
+      <div className="flex items-center gap-2">
+        <ChangePasswordDialog
+          trigger={
+            <Button variant="secondary" size="sm">
+              Change password
+            </Button>
+          }
+        />
+        <Button variant="secondary" size="sm" onClick={() => signOut({ callbackUrl: "/login" })}>
+          Sign out
+        </Button>
+      </div>
     </header>
   );
 }
