@@ -4,6 +4,7 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { loginSchema } from "@/lib/validations/auth";
+import { useZodFormErrors } from "@/lib/useZodFormErrors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,29 +13,23 @@ export function LoginForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const { fieldErrors, validateOnSubmit, validateField } = useZodFormErrors(loginSchema);
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const values = { email, password };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
 
-    const result = loginSchema.safeParse({ email, password });
-    if (!result.success) {
-      const errors: Record<string, string> = {};
-      for (const issue of result.error.issues) {
-        errors[issue.path[0] as string] = issue.message;
-      }
-      setFieldErrors(errors);
-      return;
-    }
-    setFieldErrors({});
+    const data = validateOnSubmit(values);
+    if (!data) return;
     setSubmitting(true);
 
     const response = await signIn("credentials", {
-      email: result.data.email,
-      password: result.data.password,
+      email: data.email,
+      password: data.password,
       redirect: false,
     });
 
@@ -59,6 +54,7 @@ export function LoginForm() {
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          onBlur={() => validateField("email", values)}
           disabled={submitting}
         />
         {fieldErrors.email && <p className="text-xs text-destructive">{fieldErrors.email}</p>}
@@ -72,6 +68,7 @@ export function LoginForm() {
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          onBlur={() => validateField("password", values)}
           disabled={submitting}
         />
         {fieldErrors.password && <p className="text-xs text-destructive">{fieldErrors.password}</p>}

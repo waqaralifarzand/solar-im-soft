@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { createCompanySchema } from "@/lib/validations/super-admin";
 import { createCompany } from "@/lib/actions/super-admin";
+import { useZodFormErrors } from "@/lib/useZodFormErrors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,30 +15,24 @@ export function CreateCompanyForm() {
   const [companyName, setCompanyName] = useState("");
   const [adminName, setAdminName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const { fieldErrors, validateOnSubmit, validateField } = useZodFormErrors(createCompanySchema);
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [created, setCreated] = useState<{ email: string; tempPassword: string } | null>(null);
+
+  const values = { companyName, adminName, adminEmail };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
 
-    const result = createCompanySchema.safeParse({ companyName, adminName, adminEmail });
-    if (!result.success) {
-      const errors: Record<string, string> = {};
-      for (const issue of result.error.issues) {
-        errors[issue.path[0] as string] = issue.message;
-      }
-      setFieldErrors(errors);
-      return;
-    }
-    setFieldErrors({});
+    const data = validateOnSubmit(values);
+    if (!data) return;
     setSubmitting(true);
 
     try {
-      const { tempPassword } = await createCompany(result.data);
-      setCreated({ email: result.data.adminEmail, tempPassword });
+      const { tempPassword } = await createCompany(data);
+      setCreated({ email: data.adminEmail, tempPassword });
     } catch (error) {
       setFormError(error instanceof Error ? error.message : "Something went wrong");
     } finally {
@@ -55,6 +50,7 @@ export function CreateCompanyForm() {
               id="companyName"
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
+              onBlur={() => validateField("companyName", values)}
               disabled={submitting}
             />
             {fieldErrors.companyName && (
@@ -68,6 +64,7 @@ export function CreateCompanyForm() {
               id="adminName"
               value={adminName}
               onChange={(e) => setAdminName(e.target.value)}
+              onBlur={() => validateField("adminName", values)}
               disabled={submitting}
             />
             {fieldErrors.adminName && <p className="text-xs text-destructive">{fieldErrors.adminName}</p>}
@@ -80,6 +77,7 @@ export function CreateCompanyForm() {
               type="email"
               value={adminEmail}
               onChange={(e) => setAdminEmail(e.target.value)}
+              onBlur={() => validateField("adminEmail", values)}
               disabled={submitting}
             />
             {fieldErrors.adminEmail && <p className="text-xs text-destructive">{fieldErrors.adminEmail}</p>}

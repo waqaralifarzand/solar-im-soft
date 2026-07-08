@@ -4,10 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CURRENCIES, taxCurrencySchema } from "@/lib/validations/onboarding";
 import { updateTaxCurrency } from "@/lib/actions/onboarding";
+import { useZodFormErrors } from "@/lib/useZodFormErrors";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 
 interface TaxCurrencyFormProps {
   initialTaxRate: string;
@@ -20,25 +22,25 @@ export function TaxCurrencyForm({ initialTaxRate, initialCurrency, initialLakhCr
   const [taxRate, setTaxRate] = useState(initialTaxRate);
   const [currency, setCurrency] = useState(initialCurrency);
   const [lakhCroreFormat, setLakhCroreFormat] = useState(initialLakhCroreFormat);
-  const [error, setError] = useState<string | null>(null);
+  const { fieldErrors, validateOnSubmit, validateField } = useZodFormErrors(taxCurrencySchema);
+  const [formError, setFormError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const values = { taxRate, currency, lakhCroreFormat };
+
   async function handleSave() {
     setSaved(false);
-    const result = taxCurrencySchema.safeParse({ taxRate, currency, lakhCroreFormat });
-    if (!result.success) {
-      setError(result.error.issues[0].message);
-      return;
-    }
-    setError(null);
+    setFormError(null);
+    const data = validateOnSubmit(values);
+    if (!data) return;
     setSubmitting(true);
     try {
-      await updateTaxCurrency(result.data);
+      await updateTaxCurrency(data);
       setSaved(true);
       router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong");
+      setFormError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
       setSubmitting(false);
     }
@@ -57,24 +59,25 @@ export function TaxCurrencyForm({ initialTaxRate, initialCurrency, initialLakhCr
             step="0.01"
             value={taxRate}
             onChange={(e) => setTaxRate(e.target.value)}
+            onBlur={() => validateField("taxRate", values)}
             disabled={submitting}
           />
+          {fieldErrors.taxRate && <p className="text-xs text-destructive">{fieldErrors.taxRate}</p>}
         </div>
         <div className="flex flex-1 flex-col gap-2">
           <Label htmlFor="settingsCurrency">Currency</Label>
-          <select
+          <Select
             id="settingsCurrency"
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
             disabled={submitting}
-            className="flex h-10 w-full rounded-input border border-border bg-white px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
           >
             {CURRENCIES.map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       </div>
 
@@ -89,8 +92,8 @@ export function TaxCurrencyForm({ initialTaxRate, initialCurrency, initialLakhCr
         Use lakh/crore number formatting (1,23,456 instead of 123,456)
       </label>
 
-      {error && <p className="text-xs text-destructive">{error}</p>}
-      {saved && !error && <p className="text-xs text-success">Saved.</p>}
+      {formError && <p className="text-xs text-destructive">{formError}</p>}
+      {saved && !formError && <p className="text-xs text-success">Saved.</p>}
 
       <Button onClick={handleSave} disabled={submitting} className="self-start">
         {submitting ? "Saving…" : "Save changes"}
