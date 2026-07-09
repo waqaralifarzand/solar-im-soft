@@ -8,6 +8,8 @@ import { createInvoice } from "@/lib/actions/invoices";
 import { computeInvoiceTotals } from "@/lib/invoiceCalc";
 import { formatMoney } from "@/lib/formatMoney";
 import type { PosProduct, CustomerOption } from "@/lib/queries/invoices";
+import type { ReceiptData } from "@/components/receipt/thermal-receipt";
+import { SaleCompletePanel } from "@/components/pos/sale-complete-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +37,7 @@ interface CartLine {
 }
 
 interface PosScreenProps {
+  companyName: string;
   products: PosProduct[];
   customers: CustomerOption[];
   taxRate: string;
@@ -42,7 +45,13 @@ interface PosScreenProps {
   lakhCroreFormat: boolean;
 }
 
-export function PosScreen({ products, customers, taxRate, currency, lakhCroreFormat }: PosScreenProps) {
+interface CompletedSale {
+  id: string;
+  invoiceNo: string;
+  receiptData: ReceiptData;
+}
+
+export function PosScreen({ companyName, products, customers, taxRate, currency, lakhCroreFormat }: PosScreenProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -54,6 +63,7 @@ export function PosScreen({ products, customers, taxRate, currency, lakhCroreFor
   const [note, setNote] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [completedSale, setCompletedSale] = useState<CompletedSale | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const taxRatePercent = Number(taxRate) || 0;
@@ -160,14 +170,63 @@ export function PosScreen({ products, customers, taxRate, currency, lakhCroreFor
 
     setSubmitting(true);
     try {
-      const { id } = await createInvoice(parsed.data);
-      router.push(`/invoices/${id}`);
+      const { id, invoiceNo } = await createInvoice(parsed.data);
+      const customerName = customerId ? customers.find((c) => c.id === customerId)?.name ?? null : null;
+      setCompletedSale({
+        id,
+        invoiceNo,
+        receiptData: {
+          companyName,
+          invoiceNo,
+          createdAt: new Date().toISOString(),
+          customerName,
+          items: cart.map((l, i) => ({
+            name: l.name,
+            qty: Number(l.qty) || 0,
+            unitPrice: l.unitPrice,
+            lineTotal: String(totals.lineTotals[i] ?? 0),
+          })),
+          subtotal: totals.subtotal.toFixed(2),
+          discount: (Number(billDiscount) || 0).toFixed(2),
+          taxAmount: totals.taxAmount.toFixed(2),
+          total: totals.total.toFixed(2),
+          paidAmount: paidNow.toFixed(2),
+          currency,
+          lakhCroreFormat,
+        },
+      });
+      // Refreshes the server-fetched product/customer lists (stock just changed) without
+      // navigating away — the cashier stays on /pos between sales.
       router.refresh();
     } catch (error) {
       setFormError(error instanceof Error ? error.message : "Something went wrong");
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function startNewSale() {
+    setCart([]);
+    setCustomerId("");
+    setBillDiscount("0");
+    setAmountPaidNow("0");
+    setPaidTouched(false);
+    setPaymentMethod("CASH");
+    setNote("");
+    setFormError(null);
+    setCompletedSale(null);
+    searchRef.current?.focus();
+  }
+
+  if (completedSale) {
+    return (
+      <SaleCompletePanel
+        invoiceId={completedSale.id}
+        invoiceNo={completedSale.invoiceNo}
+        receiptData={completedSale.receiptData}
+        onNewSale={startNewSale}
+      />
+    );
   }
 
   return (

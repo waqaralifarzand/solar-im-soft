@@ -36,9 +36,15 @@ test("invoice numbers stay sequential and unique under two rapid concurrent crea
       pageB.getByRole("button", { name: /complete sale/i }).click(),
     ]);
 
-    await Promise.all([pageA.waitForURL(/\/invoices\/.+/), pageB.waitForURL(/\/invoices\/.+/)]);
+    // Phase 5B: a successful sale now lands on a "Sale complete — INV-000N" success panel
+    // instead of redirecting — the invoice number is readable right there.
+    const saleCompleteA = pageA.getByText(/Sale complete — /);
+    const saleCompleteB = pageB.getByText(/Sale complete — /);
+    await Promise.all([expect(saleCompleteA).toBeVisible(), expect(saleCompleteB).toBeVisible()]);
 
-    const [noA, noB] = await Promise.all([pageA.locator("h1").textContent(), pageB.locator("h1").textContent()]);
+    const [textA, textB] = await Promise.all([saleCompleteA.textContent(), saleCompleteB.textContent()]);
+    const noA = textA?.match(/INV-\d{4}/)?.[0];
+    const noB = textB?.match(/INV-\d{4}/)?.[0];
 
     expect(noA).toMatch(/^INV-\d{4}$/);
     expect(noB).toMatch(/^INV-\d{4}$/);

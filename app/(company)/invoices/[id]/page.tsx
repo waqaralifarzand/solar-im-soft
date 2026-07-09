@@ -1,10 +1,15 @@
 import { notFound } from "next/navigation";
+import { Download } from "lucide-react";
 import { getTenantContext } from "@/lib/getTenantContext";
 import { prisma } from "@/lib/prisma";
 import { getInvoiceDetail } from "@/lib/queries/invoices";
 import { formatMoney } from "@/lib/formatMoney";
 import { StatusChip } from "@/components/ui/status-chip";
+import { Button } from "@/components/ui/button";
 import { RecordPaymentDialog } from "@/components/invoices/record-payment-dialog";
+import { ShareWhatsAppButton } from "@/components/invoices/share-whatsapp-button";
+import { PrintReceiptButton } from "@/components/receipt/print-receipt-button";
+import type { ReceiptData } from "@/components/receipt/thermal-receipt";
 import { Card } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +35,7 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
     getInvoiceDetail(ctx.companyId, params.id),
     prisma.company.findUniqueOrThrow({
       where: { id: ctx.companyId },
-      select: { currency: true, lakhCroreFormat: true },
+      select: { name: true, currency: true, lakhCroreFormat: true },
     }),
   ]);
 
@@ -40,6 +45,26 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
 
   const money = (v: string) => formatMoney(v, { currency: company.currency, lakhCroreFormat: company.lakhCroreFormat });
   const remaining = Number(detail.total) - Number(detail.paidAmount);
+
+  const receiptData: ReceiptData = {
+    companyName: company.name,
+    invoiceNo: detail.invoiceNo,
+    createdAt: detail.createdAt,
+    customerName: detail.customer?.name ?? null,
+    items: detail.items.map((item) => ({
+      name: item.nameSnapshot,
+      qty: item.qty,
+      unitPrice: item.unitPrice,
+      lineTotal: item.lineTotal,
+    })),
+    subtotal: detail.subtotal,
+    discount: detail.discount,
+    taxAmount: detail.taxAmount,
+    total: detail.total,
+    paidAmount: detail.paidAmount,
+    currency: company.currency,
+    lakhCroreFormat: company.lakhCroreFormat,
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -51,6 +76,17 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
           </p>
         </div>
         <StatusChip variant={STATUS_VARIANT[detail.status] ?? "neutral"}>{detail.status}</StatusChip>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <a href={`/api/invoices/${detail.id}/pdf`} target="_blank" rel="noopener noreferrer">
+          <Button type="button" variant="secondary" size="sm">
+            <Download size={14} className="mr-1.5" />
+            Download PDF
+          </Button>
+        </a>
+        <PrintReceiptButton data={receiptData} />
+        <ShareWhatsAppButton invoiceId={detail.id} />
       </div>
 
       <Card>
