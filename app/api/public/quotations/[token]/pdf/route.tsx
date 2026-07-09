@@ -1,29 +1,29 @@
 import { NextResponse } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
-import { getInvoiceDetail } from "@/lib/queries/invoices";
+import { getQuotationDetail } from "@/lib/queries/quotations";
 import { verifyShareToken } from "@/lib/pdfShareToken";
-import { InvoicePdfDocument } from "@/lib/pdf/invoice-pdf-document";
+import { QuotationPdfDocument } from "@/lib/pdf/quotation-pdf-document";
 
 export const dynamic = "force-dynamic";
 
 // Unauthenticated by design (see middleware.ts's /api/public exemption) — the signed
 // token itself is the capability, so a tampered/invalid token must 404 exactly like a
-// nonexistent invoice would, never revealing which case it was.
+// nonexistent quotation would, never revealing which case it was.
 export async function GET(_req: Request, { params }: { params: { token: string } }) {
-  const invoiceId = await verifyShareToken(params.token);
-  if (!invoiceId) return new NextResponse("Not found", { status: 404 });
+  const quotationId = await verifyShareToken(params.token);
+  if (!quotationId) return new NextResponse("Not found", { status: 404 });
 
-  const invoice = await prisma.invoice.findFirst({
-    where: { id: invoiceId, deletedAt: null },
+  const quotation = await prisma.quotation.findUnique({
+    where: { id: quotationId },
     select: { companyId: true },
   });
-  if (!invoice) return new NextResponse("Not found", { status: 404 });
+  if (!quotation) return new NextResponse("Not found", { status: 404 });
 
   const [detail, company] = await Promise.all([
-    getInvoiceDetail(invoice.companyId, invoiceId),
+    getQuotationDetail(quotation.companyId, quotationId),
     prisma.company.findUniqueOrThrow({
-      where: { id: invoice.companyId },
+      where: { id: quotation.companyId },
       select: {
         name: true,
         logoUrl: true,
@@ -40,12 +40,12 @@ export async function GET(_req: Request, { params }: { params: { token: string }
   ]);
   if (!detail) return new NextResponse("Not found", { status: 404 });
 
-  const buffer = await renderToBuffer(<InvoicePdfDocument company={company} invoice={detail} />);
+  const buffer = await renderToBuffer(<QuotationPdfDocument company={company} quotation={detail} />);
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="${detail.invoiceNo}.pdf"`,
+      "Content-Disposition": `inline; filename="${detail.quoteNo}.pdf"`,
     },
   });
 }

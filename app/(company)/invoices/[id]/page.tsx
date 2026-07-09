@@ -1,15 +1,20 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { Download } from "lucide-react";
 import { getTenantContext } from "@/lib/getTenantContext";
 import { prisma } from "@/lib/prisma";
 import { getInvoiceDetail } from "@/lib/queries/invoices";
+import { getReturnableLines, listReturnsForInvoice } from "@/lib/queries/returns";
+import { getConvertedFromQuotation } from "@/lib/queries/quotations";
 import { formatMoney } from "@/lib/formatMoney";
 import { StatusChip } from "@/components/ui/status-chip";
 import { Button } from "@/components/ui/button";
 import { RecordPaymentDialog } from "@/components/invoices/record-payment-dialog";
 import { ShareWhatsAppButton } from "@/components/invoices/share-whatsapp-button";
+import { generateInvoiceShareLink } from "@/lib/actions/invoice-share";
 import { PrintReceiptButton } from "@/components/receipt/print-receipt-button";
 import type { ReceiptData } from "@/components/receipt/thermal-receipt";
+import { CreateReturnDialog } from "@/components/returns/create-return-dialog";
 import { Card } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
@@ -43,6 +48,13 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
   // CASHIER can only view invoices they created themselves ("view own recent sales").
   if (ctx.role === "CASHIER" && detail.createdBy !== ctx.userId) notFound();
 
+  const [returnableLines, returns, convertedFrom] = await Promise.all([
+    getReturnableLines(ctx.companyId, detail.id),
+    listReturnsForInvoice(ctx.companyId, detail.id),
+    getConvertedFromQuotation(ctx.companyId, detail.id),
+  ]);
+  const returnedByProduct = new Map(returnableLines.map((l) => [l.productId, l.returnedQty]));
+
   const money = (v: string) => formatMoney(v, { currency: company.currency, lakhCroreFormat: company.lakhCroreFormat });
   const remaining = Number(detail.total) - Number(detail.paidAmount);
 
@@ -74,6 +86,14 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
           <p className="mt-1 text-sm text-muted-foreground">
             {detail.type} · {new Date(detail.createdAt).toLocaleString()} · by {detail.createdByName}
           </p>
+          {convertedFrom && (
+            <p className="mt-1 text-sm">
+              Converted from{" "}
+              <Link href={`/quotations/${convertedFrom.id}`} className="font-medium text-accent hover:underline">
+                {convertedFrom.quoteNo}
+              </Link>
+            </p>
+          )}
         </div>
         <StatusChip variant={STATUS_VARIANT[detail.status] ?? "neutral"}>{detail.status}</StatusChip>
       </div>
@@ -86,7 +106,7 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
           </Button>
         </a>
         <PrintReceiptButton data={receiptData} />
-        <ShareWhatsAppButton invoiceId={detail.id} />
+        <ShareWhatsAppButton shareAction={generateInvoiceShareLink.bind(null, detail.id)} />
       </div>
 
       <Card>
@@ -108,14 +128,24 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
               </tr>
             </thead>
             <tbody>
-              {detail.items.map((item) => (
-                <tr key={item.id} className="border-t border-border">
-                  <td className="px-3 py-2 text-foreground">{item.nameSnapshot}</td>
-                  <td className="px-3 py-2 text-right text-muted-foreground">{item.qty}</td>
-                  <td className="px-3 py-2 text-right text-muted-foreground">{money(item.unitPrice)}</td>
-                  <td className="px-3 py-2 text-right text-foreground">{money(item.lineTotal)}</td>
-                </tr>
-              ))}
+              {detail.items.map((item) => {
+                const returnedQty = returnedByProduct.get(item.productId) ?? 0;
+                return (
+                  <tr key={item.id} className="border-t border-border">
+                    <td className="px-3 py-2 text-foreground">
+                      {item.nameSnapshot}
+                      {returnedQty > 0 && (
+                        <span className="ml-2 inline-flex items-center rounded-pill bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning">
+                          Returned {returnedQty}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-right text-muted-foreground">{item.qty}</td>
+                    <td className="px-3 py-2 text-right text-muted-foreground">{money(item.unitPrice)}</td>
+                    <td className="px-3 py-2 text-right text-foreground">{money(item.lineTotal)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -169,6 +199,39 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
                 <div className="text-muted-foreground">
                   {new Date(p.createdAt).toLocaleString()} · {p.createdByName}
                 </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      <Card>
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium text-foreground">Returns</p>
+          {ctx.role !== "CASHIER" && <CreateReturnDialog invoiceId={detail.id} returnableLines={returnableLines} />}
+        </div>
+        {returns.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">No returns recorded yet.</p>
+        ) : (
+          <div className="mt-3 flex flex-col gap-3">
+            {returns.map((r) => (
+              <div key={r.id} className="border-t border-border pt-3 text-sm first:border-0 first:pt-0">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-foreground">
+                    {money(r.total)} · {r.restock ? "Restocked" : "Not restocked"}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {new Date(r.createdAt).toLocaleString()} · {r.createdByName}
+                  </span>
+                </div>
+                <ul className="mt-1 text-muted-foreground">
+                  {r.items.map((it) => (
+                    <li key={it.productId}>
+                      {it.qty} × {it.productName} @ {money(it.unitPrice)}
+                    </li>
+                  ))}
+                </ul>
+                {r.note && <p className="mt-1 text-muted-foreground">Note: {r.note}</p>}
               </div>
             ))}
           </div>

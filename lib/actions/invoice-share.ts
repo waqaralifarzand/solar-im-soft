@@ -3,7 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/requireRole";
 import { formatMoney } from "@/lib/formatMoney";
-import { signInvoiceShareToken } from "@/lib/pdfShareToken";
+import { signShareToken } from "@/lib/pdfShareToken";
 
 const SALE_ROLES = ["ADMIN", "MANAGER", "CASHIER"] as const;
 
@@ -37,7 +37,7 @@ export async function generateInvoiceShareLink(
   const fmt = { currency: company.currency, lakhCroreFormat: company.lakhCroreFormat };
   const remaining = invoice.total.minus(invoice.paidAmount);
 
-  const token = await signInvoiceShareToken(invoice.id);
+  const token = await signShareToken(invoice.id);
   const publicPdfUrl = `${publicPdfBaseUrl()}/api/public/invoices/${token}/pdf`;
 
   const messageLines = [

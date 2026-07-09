@@ -2,10 +2,13 @@
 
 import { useState } from "react";
 import { Share2 } from "lucide-react";
-import { generateInvoiceShareLink } from "@/lib/actions/invoice-share";
 import { Button } from "@/components/ui/button";
 
-export function ShareWhatsAppButton({ invoiceId }: { invoiceId: string }) {
+interface ShareWhatsAppButtonProps {
+  shareAction: () => Promise<{ whatsappUrl: string }>;
+}
+
+export function ShareWhatsAppButton({ shareAction }: ShareWhatsAppButtonProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -13,7 +16,7 @@ export function ShareWhatsAppButton({ invoiceId }: { invoiceId: string }) {
     setLoading(true);
     setError(null);
     try {
-      const { whatsappUrl } = await generateInvoiceShareLink(invoiceId);
+      const { whatsappUrl } = await shareAction();
       window.open(whatsappUrl, "_blank", "noopener,noreferrer");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
