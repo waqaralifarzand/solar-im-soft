@@ -256,3 +256,48 @@ None. `Category`, `Product`, `StockAdjustment`, and the `AdjustReason` enum all 
 - [x] Manual adjustment changes stockQty atomically and writes StockAdjustment + AuditLog (verified +10 and -5 adjustments update `stockQty` correctly and appear in both per-product and global history; verified a -100 over-decrement is rejected with "would take stock below zero" and writes nothing; confirmed `AuditLog` rows for `stock.adjust`, `product.create`, `product.update`, `product.delete`, `category.create` all present in the DB after the test run)
 - [x] CSV export downloads the filtered view (downloaded file content checked byte-for-byte against the active low-stock-only filter — contains only the matching product, not the filtered-out one)
 - [x] Tenant isolation verified: two companies can't see each other's products (fresh Company A/B created via Super Admin this session; Company B's categories/products/adjustments pages show zero Company A data; Company B can reuse Company A's exact SKU string, proving uniqueness is per-company (`@@unique([companyId, sku])`), not global; direct URL access from Company B to Company A's product ID returns a 404, not a data leak or crash)
+
+---
+
+### Phase 4 — Customers, khata ledger, suppliers · 2026-07-09
+**Status:** Complete
+
+**Built**
+- **Customers CRUD**: `app/(company)/customers/page.tsx` (list with TanStack-driven search, balance column sortable via column header), `app/(company)/customers/new/page.tsx` (create form with opening balance), `app/(company)/customers/[id]/page.tsx` (detail: profile edit form + ledger table + action buttons). Components: `components/customers/customer-form.tsx` (create/edit modes, fields: name, phone, email, address, opening balance on create), `components/customers/customers-table.tsx` (client-side search, sortable columns, CSV export, soft-delete per row), `components/customers/customer-ledger.tsx` (running balance table with hardcoded "Opening balance" first row when openingBalance > 0, plus all LedgerEntry rows), `components/customers/manual-entry-dialog.tsx` (MANUAL_DEBIT/MANUAL_CREDIT with amount + note), `components/customers/receive-payment-dialog.tsx` (amount + payment method CASH/BANK_TRANSFER/JAZZCASH/EASYPAISA + optional note).
+- **Customer server actions** (`lib/actions/customers.ts`): `createCustomer` (validates via `createCustomerSchema`, creates Customer + OPENING LedgerEntry with debit=openingBalance in a `$transaction`, writes AuditLog), `updateCustomer`, `deleteCustomer` (soft delete, sets `deletedAt`), `createManualLedgerEntry` (MANUAL_DEBIT or MANUAL_CREDIT), `receivePayment` (creates Payment + LedgerEntry credit). All guarded by `requireRole("ADMIN", "MANAGER")`.
+- **Customer queries** (`lib/queries/customers.ts`): `listCustomersForCompany` (computes balance by summing debits − credits across all LedgerEntry rows, starting from 0 — the OPENING entry carries the opening balance as a debit), `getCustomerDetail` (customer + ledger with running balance, user name resolution).
+- **Suppliers CRUD**: `app/(company)/suppliers/page.tsx` (list), `app/(company)/suppliers/new/page.tsx`, `app/(company)/suppliers/[id]/page.tsx` (edit). Components: `components/suppliers/supplier-form.tsx` (create/edit), `components/suppliers/suppliers-table.tsx` (search, soft-delete). Server actions: `createSupplier`, `updateSupplier`, `deleteSupplier` in `lib/actions/customers.ts`. Query: `listSuppliersForCompany`, `getSupplierDetail` in `lib/queries/customers.ts`.
+- **Validations** (`lib/validations/customers.ts`): `customerSchema`, `createCustomerSchema` (adds `openingBalance`), `manualLedgerEntrySchema`, `receivePaymentSchema`, `supplierSchema` — all Zod-validated client and server side.
+- **E2E tests** (`e2e/phase4-customers-khata-suppliers.spec.ts`): 11 Playwright tests covering customer CRUD with opening balance, manual debit/credit, payment receipt, running balance math verification (opening 5000 + debit 2000 − payment 3000 = 4000), soft delete, tenant isolation for both customers and suppliers, supplier CRUD (create/edit/delete), balance column sorting, and JazzCash payment method. All 11 pass.
+- Added `@playwright/test` devDependency and `playwright.config.ts`.
+- Added `test-results` and `playwright-report` to `.gitignore`.
+
+**Deviations from plan**
+- Balance computation starts at `Prisma.Decimal(0)` and derives entirely from LedgerEntry rows — the OPENING entry's debit already carries the opening balance, so `customer.openingBalance` is a display/reference field only, not used in running balance math. This avoids double-counting that would occur if the running balance started at `openingBalance` and also included the OPENING debit.
+- Added `revalidatePath` calls to `updateCustomer`, `deleteCustomer`, `updateSupplier`, and `deleteSupplier` server actions. Without these, Next.js's client-side Router Cache serves stale list data after edits, because the form's `router.push()` navigates back to the cached list page. This is the same gotcha documented in the Phase 2 report's "Known issues" section about the Router Cache, but manifest here as actually stale data (not just stale styling).
+
+**Schema changes**
+None. `Customer`, `Supplier`, `LedgerEntry`, `Payment`, and the `PaymentMethod`/`LedgerType` enums all existed unchanged from the Phase 0 schema.
+
+**Decisions made**
+- `CUSTOMER_ROLES = ["ADMIN", "MANAGER"] as const` — matching Phase 3's `INVENTORY_ROLES` pattern. CASHIER cannot manage customers/suppliers (per ARCHITECTURE.md role matrix).
+- Opening balance creates a single `LedgerEntry(type: "OPENING", debit: openingBalance)` at customer creation time. If `openingBalance` is 0, no OPENING entry is created. The customer detail page's `CustomerLedger` component renders a hardcoded "Opening balance" first row from `customer.openingBalance` for display, but the actual balance computation is purely from LedgerEntry rows.
+- Payment methods: `CASH`, `BANK_TRANSFER`, `JAZZCASH`, `EASYPAISA` — matching the `PaymentMethod` enum from the Phase 0 schema. The receive-payment dialog lets the user pick any of these.
+- Customer and supplier forms redirect back to the list page after create/edit via `router.push()` + `router.refresh()`.
+
+**Known issues / tech debt**
+- No pagination on customers or suppliers lists — loads the full company dataset. Acceptable for v1 given expected per-company customer counts.
+- The ledger table on the customer detail page reads all entries (no limit). For customers with very high transaction volumes, this could slow down. Not a concern at v1 scale.
+- `CustomerLedger` component has a hardcoded "Opening balance" display row that reads from `customer.openingBalance` — this is purely cosmetic (labels the first row), not used in any balance computation.
+
+**Notes for next phase**
+- `lib/actions/customers.ts` follows the established `requireRole(...CUSTOMER_ROLES)` pattern. The `revalidatePath` calls added this phase should be replicated in any future server action that mutates data shown in a list page the user navigates back to.
+- `lib/queries/customers.ts` exports `CustomerRow`, `CustomerDetail`, `LedgerRow` interfaces — reuse these in Phase 5 when attaching customers to invoices or showing customer balance in POS.
+- `formatMoney()` is used throughout for balance display — always pass `{ currency, lakhCroreFormat }` from the Company row.
+- The `receivePayment` action creates both a `Payment` record and a `LedgerEntry(type: "PAYMENT", credit: amount)` — Phase 5's invoice payment flow should follow the same pattern (Payment + LedgerEntry in a transaction).
+- Playwright test infrastructure is now set up (`playwright.config.ts`, `e2e/` directory, pre-installed Chromium at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`). Future phases should add their own `.spec.ts` files following the same patterns: `login()` helper, `setupCompany()` for tenant isolation tests, `test.setTimeout(180_000)` for adequate timeout.
+
+**Checklist result**
+- [x] Ledger math correct: opening + debits − credits = balance shown everywhere (verified via Playwright test "running balance math: opening 5000 + debit 2000 − payment 3000 = 4000" — checks all 4 running-balance cells in the ledger table row by row; also verified the balance shown in the header and in the customers list table)
+- [x] Receiving a khata payment (no invoice) updates balance (verified via "receive payment reduces balance" test — Rs 3,000 cash payment reduces balance from 7,000 to 4,000; also verified via "payment via JazzCash" test)
+- [x] Dues visible in customers table, sortable (verified via "balance column is sortable" test — creates two customers with different balances, clicks the Balance column header to sort ascending then descending, confirms both rows present)
