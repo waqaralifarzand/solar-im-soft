@@ -64,3 +64,58 @@ export async function getProductStock(productId: string): Promise<number> {
   const product = await prisma.product.findUniqueOrThrow({ where: { id: productId } });
   return product.stockQty;
 }
+
+/**
+ * Creates an invoice directly (bypassing the createInvoice action/UI, which Phase 5A/5B
+ * already test thoroughly) so quotation-conversion and returns tests can set up a known
+ * "already sold" state fast. Mirrors the real transaction's shape closely enough for
+ * realistic assertions: writes a LedgerEntry(INVOICE, debit=total) when a customer is
+ * attached, same as createInvoice does.
+ */
+export async function createTestInvoice(
+  companyId: string,
+  opts: { customerId?: string | null; createdBy: string; items: { productId: string; qty: number; unitPrice: number }[] },
+) {
+  const total = opts.items.reduce((sum, i) => sum + i.qty * i.unitPrice, 0);
+  const invoice = await prisma.invoice.create({
+    data: {
+      companyId,
+      invoiceNo: `INV-TEST-${uniqueSuffix()}`,
+      customerId: opts.customerId ?? null,
+      type: "STANDARD",
+      status: "PAID",
+      subtotal: total,
+      discount: 0,
+      taxAmount: 0,
+      total,
+      paidAmount: total,
+      createdBy: opts.createdBy,
+      items: {
+        create: opts.items.map((i) => ({
+          productId: i.productId,
+          nameSnapshot: "Test Item",
+          qty: i.qty,
+          unitPrice: i.unitPrice,
+          lineTotal: i.qty * i.unitPrice,
+        })),
+      },
+    },
+  });
+
+  if (opts.customerId) {
+    await prisma.ledgerEntry.create({
+      data: {
+        companyId,
+        customerId: opts.customerId,
+        userId: opts.createdBy,
+        type: "INVOICE",
+        debit: total,
+        credit: 0,
+        refId: invoice.id,
+        note: `Invoice ${invoice.invoiceNo}`,
+      },
+    });
+  }
+
+  return invoice;
+}
