@@ -36,7 +36,7 @@ export async function createTestUser(companyId: string, role: Role, label: strin
 
 export async function createTestProduct(
   companyId: string,
-  data: { name: string; salePrice: number; stockQty: number; sku?: string },
+  data: { name: string; salePrice: number; stockQty: number; sku?: string; costPrice?: number },
 ) {
   const suffix = uniqueSuffix();
   return prisma.product.create({
@@ -45,7 +45,7 @@ export async function createTestProduct(
       name: data.name,
       sku: data.sku ?? `SKU-${suffix}`,
       unit: "pcs",
-      costPrice: data.salePrice * 0.7,
+      costPrice: data.costPrice ?? data.salePrice * 0.7,
       salePrice: data.salePrice,
       stockQty: data.stockQty,
       reorderLevel: 5,
@@ -57,6 +57,13 @@ export async function createTestCustomer(companyId: string, name: string, openin
   const suffix = uniqueSuffix();
   return prisma.customer.create({
     data: { companyId, name: `${name} ${suffix}`, openingBalance },
+  });
+}
+
+export async function createTestSupplier(companyId: string, name: string) {
+  const suffix = uniqueSuffix();
+  return prisma.supplier.create({
+    data: { companyId, name: `${name} ${suffix}` },
   });
 }
 
@@ -74,21 +81,34 @@ export async function getProductStock(productId: string): Promise<number> {
  */
 export async function createTestInvoice(
   companyId: string,
-  opts: { customerId?: string | null; createdBy: string; items: { productId: string; qty: number; unitPrice: number }[] },
+  opts: {
+    customerId?: string | null;
+    createdBy: string;
+    items: { productId: string; qty: number; unitPrice: number; costSnapshot?: number }[];
+    discount?: number;
+    taxAmount?: number;
+    status?: "PAID" | "PARTIAL" | "UNPAID";
+    paidAmount?: number;
+  },
 ) {
-  const total = opts.items.reduce((sum, i) => sum + i.qty * i.unitPrice, 0);
+  const subtotal = opts.items.reduce((sum, i) => sum + i.qty * i.unitPrice, 0);
+  const discount = opts.discount ?? 0;
+  const taxAmount = opts.taxAmount ?? 0;
+  const total = subtotal - discount + taxAmount;
+  const status = opts.status ?? "PAID";
+  const paidAmount = opts.paidAmount ?? (status === "PAID" ? total : 0);
   const invoice = await prisma.invoice.create({
     data: {
       companyId,
       invoiceNo: `INV-TEST-${uniqueSuffix()}`,
       customerId: opts.customerId ?? null,
       type: "STANDARD",
-      status: "PAID",
-      subtotal: total,
-      discount: 0,
-      taxAmount: 0,
+      status,
+      subtotal,
+      discount,
+      taxAmount,
       total,
-      paidAmount: total,
+      paidAmount,
       createdBy: opts.createdBy,
       items: {
         create: opts.items.map((i) => ({
@@ -97,6 +117,7 @@ export async function createTestInvoice(
           qty: i.qty,
           unitPrice: i.unitPrice,
           lineTotal: i.qty * i.unitPrice,
+          costSnapshot: i.costSnapshot ?? 0,
         })),
       },
     },
@@ -118,4 +139,88 @@ export async function createTestInvoice(
   }
 
   return invoice;
+}
+
+/**
+ * Mirrors createReturn's transaction shape (Return + ReturnItems + optional restock +
+ * optional ledger credit) so report/profit-report tests can seed a known return fast,
+ * without driving the Return UI through a real browser.
+ */
+export async function createTestReturn(
+  companyId: string,
+  opts: {
+    invoiceId: string;
+    customerId?: string | null;
+    createdBy: string;
+    restock?: boolean;
+    items: { productId: string; qty: number; unitPrice: number }[];
+  },
+) {
+  const total = opts.items.reduce((sum, i) => sum + i.qty * i.unitPrice, 0);
+  const restock = opts.restock ?? true;
+
+  const ret = await prisma.return.create({
+    data: {
+      companyId,
+      invoiceId: opts.invoiceId,
+      total,
+      restock,
+      createdBy: opts.createdBy,
+      items: {
+        create: opts.items.map((i) => ({ productId: i.productId, qty: i.qty, unitPrice: i.unitPrice })),
+      },
+    },
+  });
+
+  if (restock) {
+    for (const item of opts.items) {
+      await prisma.product.update({
+        where: { id: item.productId },
+        data: { stockQty: { increment: item.qty } },
+      });
+      await prisma.stockAdjustment.create({
+        data: {
+          companyId,
+          productId: item.productId,
+          userId: opts.createdBy,
+          qtyChange: item.qty,
+          reason: "RETURN",
+          refId: ret.id,
+        },
+      });
+    }
+  }
+
+  if (opts.customerId) {
+    await prisma.ledgerEntry.create({
+      data: {
+        companyId,
+        customerId: opts.customerId,
+        userId: opts.createdBy,
+        type: "RETURN",
+        debit: 0,
+        credit: total,
+        refId: ret.id,
+        note: `Return for test invoice`,
+      },
+    });
+  }
+
+  return ret;
+}
+
+export async function createTestExpense(
+  companyId: string,
+  opts: { createdBy: string; category: string; amount: number; date: Date; note?: string },
+) {
+  return prisma.expense.create({
+    data: {
+      companyId,
+      category: opts.category,
+      amount: opts.amount,
+      note: opts.note ?? null,
+      date: opts.date,
+      createdBy: opts.createdBy,
+    },
+  });
 }

@@ -318,13 +318,14 @@ model Invoice {
 }
 
 model InvoiceItem {
-  id           String  @id @default(cuid())
-  invoiceId    String
-  productId    String
-  nameSnapshot String // product name at time of sale
-  qty          Int
-  unitPrice    Decimal @db.Decimal(12, 2)
-  lineTotal    Decimal @db.Decimal(12, 2)
+  id            String  @id @default(cuid())
+  invoiceId     String
+  productId     String
+  nameSnapshot  String // product name at time of sale
+  qty           Int
+  unitPrice     Decimal @db.Decimal(12, 2)
+  lineTotal     Decimal @db.Decimal(12, 2)
+  costSnapshot  Decimal @default(0) @db.Decimal(12, 2) // product.costPrice at time of sale, for COGS (Phase 7)
 
   invoice Invoice @relation(fields: [invoiceId], references: [id])
   product Product @relation(fields: [productId], references: [id])

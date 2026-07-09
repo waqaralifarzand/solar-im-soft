@@ -50,7 +50,14 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<{ id: st
       let lineTotal = unitPrice.times(item.qty).minus(lineDiscount);
       if (lineTotal.isNegative()) lineTotal = new Prisma.Decimal(0);
       subtotal = subtotal.plus(lineTotal);
-      return { productId: item.productId, nameSnapshot: product.name, qty: item.qty, unitPrice, lineTotal };
+      return {
+        productId: item.productId,
+        nameSnapshot: product.name,
+        qty: item.qty,
+        unitPrice,
+        lineTotal,
+        costSnapshot: product.costPrice,
+      };
     });
 
     const billDiscount = new Prisma.Decimal(parsed.billDiscount ?? 0);
@@ -100,6 +107,7 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<{ id: st
         qty: l.qty,
         unitPrice: l.unitPrice,
         lineTotal: l.lineTotal,
+        costSnapshot: l.costSnapshot,
       })),
     });
 
