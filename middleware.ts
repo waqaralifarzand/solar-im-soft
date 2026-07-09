@@ -6,7 +6,9 @@ import { IMPERSONATION_COOKIE_NAME, verifyImpersonationToken } from "@/lib/imper
 const PUBLIC_PATHS = ["/login", "/forgot-password"];
 
 function roleHome(role: string): string {
-  return role === "SUPER_ADMIN" ? "/super" : "/dashboard";
+  if (role === "SUPER_ADMIN") return "/super";
+  if (role === "CASHIER") return "/pos";
+  return "/dashboard";
 }
 
 export async function middleware(req: NextRequest) {
