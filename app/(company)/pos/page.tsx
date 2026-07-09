@@ -12,7 +12,7 @@ export default async function PosPage() {
     listCustomersForPicker(ctx.companyId),
     prisma.company.findUniqueOrThrow({
       where: { id: ctx.companyId },
-      select: { taxRate: true, currency: true, lakhCroreFormat: true },
+      select: { name: true, taxRate: true, currency: true, lakhCroreFormat: true },
     }),
   ]);
 
@@ -22,6 +22,7 @@ export default async function PosPage() {
         <h1 className="text-[24px] font-semibold tracking-[-0.01em] text-foreground">Point of sale</h1>
       </div>
       <PosScreen
+        companyName={company.name}
         products={products}
         customers={customers}
         taxRate={company.taxRate.toString()}

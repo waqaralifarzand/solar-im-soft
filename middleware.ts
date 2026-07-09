@@ -18,6 +18,7 @@ export async function middleware(req: NextRequest) {
     PUBLIC_PATHS.includes(pathname) ||
     pathname.startsWith("/api/auth") ||
     pathname === "/api/bootstrap" ||
+    pathname.startsWith("/api/public/") ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico"
   ) {

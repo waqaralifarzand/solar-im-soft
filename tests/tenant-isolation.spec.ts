@@ -17,6 +17,8 @@ test("invoices, products, and invoice numbering are isolated per company", async
     await pageA.getByPlaceholder(/search product/i).fill(productA.name);
     await pageA.getByPlaceholder(/search product/i).press("Enter");
     await pageA.getByRole("button", { name: /complete sale/i }).click();
+    await expect(pageA.getByText(/sale complete/i)).toBeVisible();
+    await pageA.getByRole("button", { name: /view invoice/i }).click();
     await pageA.waitForURL(/\/invoices\/.+/);
     const invoiceAUrl = pageA.url();
     const invoiceANo = await pageA.locator("h1").textContent();
@@ -43,6 +45,8 @@ test("invoices, products, and invoice numbering are isolated per company", async
     await pageB.getByPlaceholder(/search product/i).fill(productB.name);
     await pageB.getByPlaceholder(/search product/i).press("Enter");
     await pageB.getByRole("button", { name: /complete sale/i }).click();
+    await expect(pageB.getByText(/sale complete/i)).toBeVisible();
+    await pageB.getByRole("button", { name: /view invoice/i }).click();
     await pageB.waitForURL(/\/invoices\/.+/);
     const invoiceBNo = await pageB.locator("h1").textContent();
     expect(invoiceBNo).toBe("INV-0001");

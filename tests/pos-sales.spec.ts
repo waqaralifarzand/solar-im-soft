@@ -34,6 +34,10 @@ test.describe("POS and invoicing core", () => {
 
     // default amount-paid auto-fills to the full total (cash, walk-in) — just submit
     await cashierPage.getByRole("button", { name: /complete sale/i }).click();
+    // Phase 5B: successful sale lands on a success panel (receipt/whatsapp/new-sale), not
+    // an instant redirect — go to the invoice from there.
+    await expect(cashierPage.getByText(/sale complete/i)).toBeVisible();
+    await cashierPage.getByRole("button", { name: /view invoice/i }).click();
     await cashierPage.waitForURL(/\/invoices\/.+/);
 
     await expect(cashierPage.getByText("PAID", { exact: true })).toBeVisible();
@@ -84,6 +88,8 @@ test.describe("POS and invoicing core", () => {
     await cashierPage.getByLabel("Amount paid now").fill("0");
 
     await cashierPage.getByRole("button", { name: /complete sale/i }).click();
+    await expect(cashierPage.getByText(/sale complete/i)).toBeVisible();
+    await cashierPage.getByRole("button", { name: /view invoice/i }).click();
     await cashierPage.waitForURL(/\/invoices\/.+/);
     await expect(cashierPage.getByText("UNPAID", { exact: true })).toBeVisible();
 
