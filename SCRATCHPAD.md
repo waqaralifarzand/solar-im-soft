@@ -256,3 +256,48 @@ None. `Category`, `Product`, `StockAdjustment`, and the `AdjustReason` enum all 
 - [x] Manual adjustment changes stockQty atomically and writes StockAdjustment + AuditLog (verified +10 and -5 adjustments update `stockQty` correctly and appear in both per-product and global history; verified a -100 over-decrement is rejected with "would take stock below zero" and writes nothing; confirmed `AuditLog` rows for `stock.adjust`, `product.create`, `product.update`, `product.delete`, `category.create` all present in the DB after the test run)
 - [x] CSV export downloads the filtered view (downloaded file content checked byte-for-byte against the active low-stock-only filter — contains only the matching product, not the filtered-out one)
 - [x] Tenant isolation verified: two companies can't see each other's products (fresh Company A/B created via Super Admin this session; Company B's categories/products/adjustments pages show zero Company A data; Company B can reuse Company A's exact SKU string, proving uniqueness is per-company (`@@unique([companyId, sku])`), not global; direct URL access from Company B to Company A's product ID returns a 404, not a data leak or crash)
+
+---
+
+### Phase 4 — Customers, khata ledger, suppliers · 2026-07-09
+**Status:** Complete
+
+**Built**
+- **Customers CRUD**: `lib/validations/customers.ts` (Zod schemas for create/update, manual ledger entry, receive payment with `PAYMENT_METHODS` enum), `lib/queries/customers.ts` (`listCustomersWithBalance` using `prisma.ledgerEntry.groupBy` for efficient balance computation — 2 queries total, no N+1 — and `getCustomerDetail` with chronological ledger + running balance via `Prisma.Decimal` arithmetic), `lib/actions/customers.ts` (`createCustomer` with transactional opening balance LedgerEntry, `updateCustomer`, `deleteCustomer` soft delete, `createManualLedgerEntry`, `receivePayment` with transactional Payment + LedgerEntry)
+- **Customer routes**: `app/(company)/customers/page.tsx` (list with "New customer" button), `customers/new/page.tsx` (create form with opening balance), `customers/[id]/page.tsx` (detail page: profile, balance display, inline edit form without opening balance field, manual debit/credit dialog, receive payment dialog, ledger table with running balance)
+- **Customer UI components**: `components/customers/customers-table.tsx` (TanStack table, client-side search filter on name/phone/email, balance column with custom `sortingFn`, balance shown red when > 0), `customer-form.tsx` (shared create/edit, opening balance field only in create mode, uses `useZodFormErrors`), `customer-ledger.tsx` (TanStack table with date/type/debit/credit/running balance/note/user columns, StatusChip per type), `manual-ledger-entry-dialog.tsx` (MANUAL_DEBIT/MANUAL_CREDIT select, amount, note), `receive-payment-dialog.tsx` (amount, payment method select with all 6 PaymentMethod enum values, note, shows current balance), `customer-row-actions.tsx` (soft delete with confirm)
+- **Suppliers CRUD**: `lib/validations/suppliers.ts` (Zod schema), `lib/queries/suppliers.ts` (`listSuppliers` with soft delete filter), `lib/actions/suppliers.ts` (`createSupplier`, `updateSupplier`, `deleteSupplier` soft delete, all with AuditLog)
+- **Supplier route**: `app/(company)/suppliers/page.tsx` (inline create form + table)
+- **Supplier UI components**: `components/suppliers/suppliers-table.tsx` (TanStack table, client-side search filter on name/phone), `create-supplier-form.tsx` (inline form in Card), `edit-supplier-dialog.tsx` (edit dialog), `supplier-row-actions.tsx` (edit + delete with confirm)
+- All actions gated by `requireRole("ADMIN", "MANAGER")` — CASHIER excluded per ARCHITECTURE.md role matrix
+- All mutations write `AuditLog` rows with `ctx.impersonatedBy ?? ctx.userId` as actor
+
+**Deviations from plan**
+- None. All scope items from PHASES.md Phase 4 were implemented as specified. Customer balance is computed purely from ledger entries (never stored denormalized), opening balance creates a LedgerEntry(OPENING, debit=amount) in a transaction, payments create Payment + LedgerEntry(PAYMENT, credit=amount) in a transaction.
+
+**Schema changes**
+None. `Customer`, `LedgerEntry`, `Payment`, `Supplier`, and all related enums (`LedgerType`, `PaymentMethod`) existed unchanged from the Phase 0 schema.
+
+**Decisions made**
+- `CUSTOMER_ROLES = ["ADMIN", "MANAGER"] as const` — CASHIER excluded from customers/suppliers, following the Phase 3 `INVENTORY_ROLES` precedent and ARCHITECTURE.md's role matrix.
+- Balance computation strategy: `listCustomersWithBalance` uses `prisma.ledgerEntry.groupBy({ by: ["customerId"], _sum: { debit: true, credit: true } })` for efficient O(1) per-company balance aggregation (2 queries: customers + grouped ledger sums). `getCustomerDetail` computes running balance by iterating chronologically with `Prisma.Decimal` arithmetic — each row's running balance = previous + debit - credit.
+- Customer edit form deliberately omits `openingBalance` — opening balance is a one-time event on creation (writes a ledger entry), not an editable profile field. Editing the profile never touches the ledger.
+- Suppliers have inline create (form + table on same page) rather than a separate `/suppliers/new` route — simpler UX for a simple CRUD entity with only 3 fields (name, phone, address).
+- The `Customer.openingBalance` Prisma field stores the original opening balance for reference, but the displayed balance everywhere comes exclusively from summing ledger entries — this ensures the ledger is always the single source of truth.
+
+**Known issues / tech debt**
+- No pagination on customers or suppliers tables — loads the full company dataset. Acceptable for v1 given expected per-company customer/supplier counts; add pagination if a company grows past several hundred customers.
+- Customer search filters on name/phone/email substring — note that "Ali" matches "Sara Malik" because "Malik" contains "ali". This is correct behavior for substring search but worth knowing for test assertions.
+- Running balance on the customer detail ledger is computed client-side from the chronologically-ordered entries the server provides — not stored as a column. This is fine for expected ledger sizes; if a customer accumulates thousands of entries, the server could paginate and provide a starting balance.
+
+**Notes for next phase**
+- `receivePayment` in `lib/actions/customers.ts` creates both a `Payment` record and a `LedgerEntry(PAYMENT, credit=amount, refId=payment.id)` in a single `$transaction` — Phase 5's invoice payment flow should follow the same pattern, linking the ledger entry back to the payment via `refId`.
+- `LedgerType.INVOICE` entries are not yet written (no invoices exist yet) — Phase 5 will need to write `LedgerEntry(INVOICE, debit=invoiceTotal)` when creating a credit sale, and the customer balance computation already handles all ledger types generically.
+- The `formatMoney` pattern established in Phase 3 is reused here: every money-displaying page fetches `{ currency, lakhCroreFormat }` from the Company row and passes them to the client component.
+- `lib/exportCsv.ts` and `lib/useZodFormErrors.ts` from Phase 3 are both reused in this phase's forms and could be reused in Phase 5's invoice/POS forms.
+- The `DataTable` component from Phase 1 is reused unchanged — column definitions are always in `"use client"` table wrapper components, data is passed as plain serializable rows from Server Components.
+
+**Checklist result**
+- [x] Ledger math correct: opening + debits - credits = balance shown everywhere (verified: opening 15,000 + manual debit 5,000 = 20,000; - payment 8,000 = 12,000; - JazzCash 2,000 = 10,000; - manual credit 1,000 = 9,000 — all matching in detail page balance, ledger running balance column, and customers table balance column)
+- [x] Receiving a khata payment (no invoice) updates balance (verified: "Receive payment" flow with CASH and JAZZCASH methods both correctly create Payment + LedgerEntry and update the displayed balance)
+- [x] Dues visible in customers table, sortable (verified: balance column shows formatted amounts, red when > 0, with custom sortingFn for numeric sorting)
