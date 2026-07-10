@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { useToast } from "@/components/ui/toast";
 
 interface StockAdjustmentDialogProps {
   productId: string;
@@ -18,6 +19,7 @@ interface StockAdjustmentDialogProps {
 
 export function StockAdjustmentDialog({ productId, currentStockQty }: StockAdjustmentDialogProps) {
   const router = useRouter();
+  const showToast = useToast();
   const [open, setOpen] = useState(false);
   const [qtyChange, setQtyChange] = useState("");
   const [reason, setReason] = useState<(typeof MANUAL_ADJUST_REASONS)[number]>("MANUAL");
@@ -49,6 +51,7 @@ export function StockAdjustmentDialog({ productId, currentStockQty }: StockAdjus
 
     try {
       await createStockAdjustment(data);
+      showToast("Stock adjusted");
       router.refresh();
       setOpen(false);
     } catch (error) {

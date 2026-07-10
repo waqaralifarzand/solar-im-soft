@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/components/ui/toast";
 
 interface EditSupplierDialogProps {
   open: boolean;
@@ -24,6 +25,7 @@ export function EditSupplierDialog({
   initialValues,
 }: EditSupplierDialogProps) {
   const router = useRouter();
+  const showToast = useToast();
   const [name, setName] = useState(initialValues.name);
   const [phone, setPhone] = useState(initialValues.phone);
   const [address, setAddress] = useState(initialValues.address);
@@ -55,6 +57,7 @@ export function EditSupplierDialog({
 
     try {
       await updateSupplier(supplierId, data);
+      showToast("Supplier updated");
       router.refresh();
       onOpenChange(false);
     } catch (error) {

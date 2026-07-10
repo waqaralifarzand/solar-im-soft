@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/components/ui/toast";
 
 interface CreateReturnDialogProps {
   invoiceId: string;
@@ -16,6 +17,7 @@ interface CreateReturnDialogProps {
 
 export function CreateReturnDialog({ invoiceId, returnableLines }: CreateReturnDialogProps) {
   const router = useRouter();
+  const showToast = useToast();
   const [open, setOpen] = useState(false);
   const [qtyByProduct, setQtyByProduct] = useState<Record<string, string>>({});
   const [restock, setRestock] = useState(true);
@@ -51,6 +53,7 @@ export function CreateReturnDialog({ invoiceId, returnableLines }: CreateReturnD
     setSubmitting(true);
     try {
       await createReturn({ invoiceId, items, restock, note });
+      showToast("Return recorded");
       router.refresh();
       setOpen(false);
     } catch (error) {

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { useToast } from "@/components/ui/toast";
 
 interface ManualLedgerEntryDialogProps {
   customerId: string;
@@ -17,6 +18,7 @@ interface ManualLedgerEntryDialogProps {
 
 export function ManualLedgerEntryDialog({ customerId }: ManualLedgerEntryDialogProps) {
   const router = useRouter();
+  const showToast = useToast();
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<(typeof MANUAL_LEDGER_TYPES)[number]>("MANUAL_DEBIT");
   const [amount, setAmount] = useState("");
@@ -49,6 +51,7 @@ export function ManualLedgerEntryDialog({ customerId }: ManualLedgerEntryDialogP
 
     try {
       await createManualLedgerEntry(data);
+      showToast("Ledger entry added");
       router.refresh();
       setOpen(false);
     } catch (error) {

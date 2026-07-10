@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Ban, CheckCircle2, KeyRound } from "lucide-react";
 import { setCompanyUserStatus, resetCompanyUserPassword } from "@/lib/actions/settings-users";
 import { RevealPasswordDialog } from "@/components/ui/reveal-password-dialog";
+import { useToast } from "@/components/ui/toast";
 
 interface CompanyUserRowActionsProps {
   userId: string;
@@ -15,6 +16,7 @@ interface CompanyUserRowActionsProps {
 
 export function CompanyUserRowActions({ userId, email, status, isSelf }: CompanyUserRowActionsProps) {
   const router = useRouter();
+  const showToast = useToast();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<{ email: string; tempPassword: string } | null>(null);
@@ -22,9 +24,11 @@ export function CompanyUserRowActions({ userId, email, status, isSelf }: Company
   function handleToggleStatus() {
     if (status === "ACTIVE" && !confirm(`Disable ${email}? They won't be able to log in.`)) return;
     setError(null);
+    const next = status === "ACTIVE" ? "DISABLED" : "ACTIVE";
     startTransition(async () => {
       try {
-        await setCompanyUserStatus(userId, status === "ACTIVE" ? "DISABLED" : "ACTIVE");
+        await setCompanyUserStatus(userId, next);
+        showToast(next === "ACTIVE" ? `${email} enabled` : `${email} disabled`);
         router.refresh();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Something went wrong");

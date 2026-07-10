@@ -7,6 +7,7 @@ import type { PurchaseOrderDetail } from "@/lib/queries/purchases";
 import { formatMoney } from "@/lib/formatMoney";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 
 interface ReceivePurchaseOrderDialogProps {
   po: PurchaseOrderDetail;
@@ -16,6 +17,7 @@ interface ReceivePurchaseOrderDialogProps {
 
 export function ReceivePurchaseOrderDialog({ po, currency, lakhCroreFormat }: ReceivePurchaseOrderDialogProps) {
   const router = useRouter();
+  const showToast = useToast();
   const [open, setOpen] = useState(false);
   const [updateCostFor, setUpdateCostFor] = useState<Set<string>>(new Set(po.items.map((i) => i.productId)));
   const [formError, setFormError] = useState<string | null>(null);
@@ -36,6 +38,7 @@ export function ReceivePurchaseOrderDialog({ po, currency, lakhCroreFormat }: Re
     setSubmitting(true);
     try {
       await receivePurchaseOrder(po.id, { updateCostPriceProductIds: [...updateCostFor] });
+      showToast(`${po.poNo} received`);
       router.refresh();
       setOpen(false);
     } catch (error) {

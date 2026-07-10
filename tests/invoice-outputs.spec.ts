@@ -132,8 +132,19 @@ test("WhatsApp share serves the right invoice through a signed public link; tamp
   expect(okBody.subarray(0, 4).toString()).toBe("%PDF");
 
   // A tampered signature must 404, never 200 or 500.
+  //
+  // Flips the second-to-last base64url character, not the last one: a 32-byte HMAC-SHA256
+  // signature has 2 leftover bytes in its final 3-character base64 group, so the *last*
+  // character only carries 4 significant bits (the other 2 are encoding padding, always
+  // zero) — flipping it to "A" (index 0) or "B" (index 1) can land on a character sharing
+  // the same top 4 bits as the original whenever that original character was itself "A",
+  // decoding to the identical byte and leaving the signature still valid. That's a real,
+  // ~1-in-16 flake this test hit intermittently before this fix. The second-to-last
+  // character fully participates in encoding real bits, so flipping it always changes the
+  // decoded signature.
   const tamperedUrl = publicUrl.replace(/(\/invoices\/)([^/]+)(\/pdf)/, (_m, pre, token, post) => {
-    const flipped = token.slice(0, -1) + (token.slice(-1) === "A" ? "B" : "A");
+    const i = token.length - 2;
+    const flipped = token.slice(0, i) + (token[i] === "A" ? "B" : "A") + token.slice(i + 1);
     return `${pre}${flipped}${post}`;
   });
   expect(tamperedUrl).not.toBe(publicUrl);

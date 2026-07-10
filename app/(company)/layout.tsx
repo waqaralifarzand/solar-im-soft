@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { AppShell } from "@/components/app-shell/app-shell";
 import { SuspendedLockScreen } from "@/components/suspended-lock-screen";
 import { ImpersonationBanner } from "@/components/super/impersonation-banner";
+import { ToastProvider } from "@/components/ui/toast";
 
 export const dynamic = "force-dynamic";
 
@@ -28,18 +29,20 @@ export default async function CompanyLayout({ children }: { children: React.Reac
 
   return (
     <div className="flex h-screen flex-col" style={{ "--accent": company.accentColor } as React.CSSProperties}>
-      {ctx.impersonatedBy && <ImpersonationBanner companyName={company.name} />}
-      <div className="min-h-0 flex-1">
-        <AppShell
-          companyName={company.name}
-          logoUrl={company.logoUrl}
-          userName={user.name}
-          role={ctx.role}
-          isImpersonating={!!ctx.impersonatedBy}
-        >
-          {children}
-        </AppShell>
-      </div>
+      <ToastProvider>
+        {ctx.impersonatedBy && <ImpersonationBanner companyName={company.name} />}
+        <div className="min-h-0 flex-1">
+          <AppShell
+            companyName={company.name}
+            logoUrl={company.logoUrl}
+            userName={user.name}
+            role={ctx.role}
+            isImpersonating={!!ctx.impersonatedBy}
+          >
+            {children}
+          </AppShell>
+        </div>
+      </ToastProvider>
     </div>
   );
 }

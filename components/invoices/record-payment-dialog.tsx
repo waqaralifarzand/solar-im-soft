@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { useToast } from "@/components/ui/toast";
 
 const METHOD_LABELS: Record<string, string> = {
   CASH: "Cash",
@@ -27,6 +28,7 @@ interface RecordPaymentDialogProps {
 
 export function RecordPaymentDialog({ invoiceId, remaining }: RecordPaymentDialogProps) {
   const router = useRouter();
+  const showToast = useToast();
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState<(typeof PAYMENT_METHODS)[number]>("CASH");
@@ -58,6 +60,7 @@ export function RecordPaymentDialog({ invoiceId, remaining }: RecordPaymentDialo
 
     try {
       await recordInvoicePayment(invoiceId, data);
+      showToast("Payment recorded");
       router.refresh();
       setOpen(false);
     } catch (error) {

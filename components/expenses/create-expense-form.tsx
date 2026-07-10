@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { useToast } from "@/components/ui/toast";
 
 function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10);
@@ -17,6 +18,7 @@ function todayIsoDate(): string {
 
 export function CreateExpenseForm() {
   const router = useRouter();
+  const showToast = useToast();
   const [category, setCategory] = useState<(typeof EXPENSE_CATEGORIES)[number]>("Rent");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(todayIsoDate());
@@ -41,6 +43,7 @@ export function CreateExpenseForm() {
       setNote("");
       setDate(todayIsoDate());
       clearErrors();
+      showToast("Expense added");
       router.refresh();
     } catch (error) {
       setFormError(error instanceof Error ? error.message : "Something went wrong");

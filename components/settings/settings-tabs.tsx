@@ -9,6 +9,7 @@ const TABS = [
   { label: "Tax & currency", href: "/settings/tax" },
   { label: "Users", href: "/settings/users" },
   { label: "Data", href: "/settings/data" },
+  { label: "Audit log", href: "/settings/audit" },
 ];
 
 export function SettingsTabs() {

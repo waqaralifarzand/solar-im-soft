@@ -9,9 +9,11 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/components/ui/toast";
 
 export function CreateSupplierForm() {
   const router = useRouter();
+  const showToast = useToast();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
@@ -36,6 +38,7 @@ export function CreateSupplierForm() {
       setName("");
       setPhone("");
       setAddress("");
+      showToast("Supplier added");
       router.refresh();
     } catch (error) {
       setFormError(error instanceof Error ? error.message : "Something went wrong");

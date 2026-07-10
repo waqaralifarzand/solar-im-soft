@@ -30,7 +30,7 @@ export function AppShell({
         isImpersonating={isImpersonating}
       />
       <div className="flex min-h-0 flex-1 flex-col">
-        <Topbar />
+        <Topbar role={role} />
         <main className="flex-1 overflow-y-auto bg-background p-8">{children}</main>
       </div>
     </div>
