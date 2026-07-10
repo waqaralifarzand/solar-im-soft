@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { updatePurchaseOrderStatus } from "@/lib/actions/purchases";
 import { MANUAL_PO_STATUSES } from "@/lib/validations/purchases";
 import { Select } from "@/components/ui/select";
+import { useToast } from "@/components/ui/toast";
 
 interface PurchaseOrderStatusSelectProps {
   poId: string;
@@ -13,6 +14,7 @@ interface PurchaseOrderStatusSelectProps {
 
 export function PurchaseOrderStatusSelect({ poId, status }: PurchaseOrderStatusSelectProps) {
   const router = useRouter();
+  const showToast = useToast();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,6 +24,7 @@ export function PurchaseOrderStatusSelect({ poId, status }: PurchaseOrderStatusS
     setError(null);
     try {
       await updatePurchaseOrderStatus(poId, { status: next });
+      showToast(`Status changed to ${next}`);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");

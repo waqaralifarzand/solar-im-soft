@@ -11,9 +11,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { RevealPasswordDialog } from "@/components/ui/reveal-password-dialog";
+import { useToast } from "@/components/ui/toast";
 
 export function CreateUserForm() {
   const router = useRouter();
+  const showToast = useToast();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"MANAGER" | "CASHIER">("MANAGER");
@@ -39,6 +41,7 @@ export function CreateUserForm() {
       setEmail("");
       setRole("MANAGER");
       clearErrors();
+      showToast("User created");
       router.refresh();
     } catch (error) {
       setFormError(error instanceof Error ? error.message : "Something went wrong");

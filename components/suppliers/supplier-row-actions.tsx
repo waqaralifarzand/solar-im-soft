@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Pencil, Trash2 } from "lucide-react";
 import { deleteSupplier } from "@/lib/actions/suppliers";
 import { EditSupplierDialog } from "@/components/suppliers/edit-supplier-dialog";
+import { useToast } from "@/components/ui/toast";
 
 interface SupplierRowActionsProps {
   supplierId: string;
@@ -15,6 +16,7 @@ interface SupplierRowActionsProps {
 
 export function SupplierRowActions({ supplierId, name, phone, address }: SupplierRowActionsProps) {
   const router = useRouter();
+  const showToast = useToast();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
@@ -25,6 +27,7 @@ export function SupplierRowActions({ supplierId, name, phone, address }: Supplie
     startTransition(async () => {
       try {
         await deleteSupplier(supplierId);
+        showToast(`"${name}" deleted`);
         router.refresh();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Something went wrong");

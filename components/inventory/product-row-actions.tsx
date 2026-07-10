@@ -4,9 +4,11 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { deleteProduct } from "@/lib/actions/inventory";
+import { useToast } from "@/components/ui/toast";
 
 export function ProductRowActions({ productId, name }: { productId: string; name: string }) {
   const router = useRouter();
+  const showToast = useToast();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -16,6 +18,7 @@ export function ProductRowActions({ productId, name }: { productId: string; name
     startTransition(async () => {
       try {
         await deleteProduct(productId);
+        showToast(`"${name}" deleted`);
         router.refresh();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Something went wrong");

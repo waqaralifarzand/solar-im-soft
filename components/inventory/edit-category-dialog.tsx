@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/components/ui/toast";
 
 interface EditCategoryDialogProps {
   categoryId: string;
@@ -19,6 +20,7 @@ interface EditCategoryDialogProps {
 
 export function EditCategoryDialog({ categoryId, initialName, open, onOpenChange }: EditCategoryDialogProps) {
   const router = useRouter();
+  const showToast = useToast();
   const [name, setName] = useState(initialName);
   const { fieldErrors, validateOnSubmit, validateField, clearErrors } = useZodFormErrors(categorySchema);
   const [formError, setFormError] = useState<string | null>(null);
@@ -45,6 +47,7 @@ export function EditCategoryDialog({ categoryId, initialName, open, onOpenChange
 
     try {
       await updateCategory(categoryId, data);
+      showToast("Category updated");
       router.refresh();
       onOpenChange(false);
     } catch (error) {

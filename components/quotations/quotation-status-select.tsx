@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { updateQuotationStatus } from "@/lib/actions/quotations";
 import { MANUAL_QUOTE_STATUSES } from "@/lib/validations/quotations";
 import { Select } from "@/components/ui/select";
+import { useToast } from "@/components/ui/toast";
 
 interface QuotationStatusSelectProps {
   quotationId: string;
@@ -13,6 +14,7 @@ interface QuotationStatusSelectProps {
 
 export function QuotationStatusSelect({ quotationId, status }: QuotationStatusSelectProps) {
   const router = useRouter();
+  const showToast = useToast();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,6 +24,7 @@ export function QuotationStatusSelect({ quotationId, status }: QuotationStatusSe
     setError(null);
     try {
       await updateQuotationStatus(quotationId, { status: next });
+      showToast(`Status changed to ${next}`);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");

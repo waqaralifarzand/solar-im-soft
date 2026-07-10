@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { useToast } from "@/components/ui/toast";
 
 interface TaxCurrencyFormProps {
   initialTaxRate: string;
@@ -19,6 +20,7 @@ interface TaxCurrencyFormProps {
 
 export function TaxCurrencyForm({ initialTaxRate, initialCurrency, initialLakhCroreFormat }: TaxCurrencyFormProps) {
   const router = useRouter();
+  const showToast = useToast();
   const [taxRate, setTaxRate] = useState(initialTaxRate);
   const [currency, setCurrency] = useState(initialCurrency);
   const [lakhCroreFormat, setLakhCroreFormat] = useState(initialLakhCroreFormat);
@@ -38,6 +40,7 @@ export function TaxCurrencyForm({ initialTaxRate, initialCurrency, initialLakhCr
     try {
       await updateTaxCurrency(data);
       setSaved(true);
+      showToast("Settings saved");
       router.refresh();
     } catch (e) {
       setFormError(e instanceof Error ? e.message : "Something went wrong");

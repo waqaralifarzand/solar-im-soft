@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Pencil, Trash2 } from "lucide-react";
 import { deleteCategory } from "@/lib/actions/inventory";
 import { EditCategoryDialog } from "@/components/inventory/edit-category-dialog";
+import { useToast } from "@/components/ui/toast";
 
 interface CategoryRowActionsProps {
   categoryId: string;
@@ -14,6 +15,7 @@ interface CategoryRowActionsProps {
 
 export function CategoryRowActions({ categoryId, name, productCount }: CategoryRowActionsProps) {
   const router = useRouter();
+  const showToast = useToast();
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +30,7 @@ export function CategoryRowActions({ categoryId, name, productCount }: CategoryR
     startTransition(async () => {
       try {
         await deleteCategory(categoryId);
+        showToast(`"${name}" deleted`);
         router.refresh();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Something went wrong");

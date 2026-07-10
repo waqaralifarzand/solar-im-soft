@@ -10,6 +10,7 @@ import { LogoUploadField } from "@/components/branding/logo-upload-field";
 import { AccentColorField } from "@/components/branding/accent-color-field";
 import { BrandingPreviewCard } from "@/components/branding/branding-preview-card";
 import { InvoiceNotesFields } from "@/components/branding/invoice-notes-fields";
+import { useToast } from "@/components/ui/toast";
 
 interface BrandingFormProps {
   companyName: string;
@@ -27,6 +28,7 @@ export function BrandingForm({
   initialFooterNote,
 }: BrandingFormProps) {
   const router = useRouter();
+  const showToast = useToast();
   const [logoUrl, setLogoUrl] = useState(initialLogoUrl);
   const [accentColor, setAccentColor] = useState(initialAccentColor);
   const [headerNote, setHeaderNote] = useState(initialHeaderNote);
@@ -56,6 +58,7 @@ export function BrandingForm({
     try {
       await Promise.all([updateBranding(brandingResult.data), updateInvoiceNotes(notesResult.data)]);
       setSaved(true);
+      showToast("Branding saved");
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");

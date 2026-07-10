@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { suspendCompany, activateCompany } from "@/lib/actions/super-admin";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 
 export function CompanyStatusAction({
   companyId,
@@ -15,6 +16,7 @@ export function CompanyStatusAction({
   status: "ACTIVE" | "SUSPENDED";
 }) {
   const router = useRouter();
+  const showToast = useToast();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -27,8 +29,10 @@ export function CompanyStatusAction({
       try {
         if (status === "ACTIVE") {
           await suspendCompany(companyId);
+          showToast(`${companyName} suspended`);
         } else {
           await activateCompany(companyId);
+          showToast(`${companyName} activated`);
         }
         router.refresh();
       } catch (e) {

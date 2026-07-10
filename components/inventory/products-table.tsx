@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Download } from "lucide-react";
 import { DataTable } from "@/components/ui/data-table";
@@ -22,9 +23,12 @@ interface ProductsTableProps {
 }
 
 export function ProductsTable({ products, categories, currency, lakhCroreFormat }: ProductsTableProps) {
+  const searchParams = useSearchParams();
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState("all");
-  const [lowStockOnly, setLowStockOnly] = useState(false);
+  // Pre-filters when linked from the dashboard's "Low stock items" card (?lowStock=true) —
+  // read once on mount, then behaves as ordinary local toggle state.
+  const [lowStockOnly, setLowStockOnly] = useState(() => searchParams.get("lowStock") === "true");
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();

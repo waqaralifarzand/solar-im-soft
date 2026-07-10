@@ -36,7 +36,7 @@ export async function createTestUser(companyId: string, role: Role, label: strin
 
 export async function createTestProduct(
   companyId: string,
-  data: { name: string; salePrice: number; stockQty: number; sku?: string; costPrice?: number },
+  data: { name: string; salePrice: number; stockQty: number; sku?: string; costPrice?: number; reorderLevel?: number },
 ) {
   const suffix = uniqueSuffix();
   return prisma.product.create({
@@ -48,7 +48,7 @@ export async function createTestProduct(
       costPrice: data.costPrice ?? data.salePrice * 0.7,
       salePrice: data.salePrice,
       stockQty: data.stockQty,
-      reorderLevel: 5,
+      reorderLevel: data.reorderLevel ?? 5,
     },
   });
 }
