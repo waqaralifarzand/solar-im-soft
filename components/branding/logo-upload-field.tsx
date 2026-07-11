@@ -57,8 +57,10 @@ export function LogoUploadField({ value, onChange, companyInitial, disabled }: L
       <Label>Logo</Label>
       <div className="flex items-center gap-4">
         {value ? (
-          // eslint-disable-next-line @next/next/no-img-element -- logo is a base64 data URI
-          <img src={value} alt="Logo preview" className="h-12 w-12 rounded-input border border-border object-cover" />
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-input border border-border p-1">
+            {/* eslint-disable-next-line @next/next/no-img-element -- logo is a base64 data URI */}
+            <img src={value} alt="Logo preview" className="max-h-full max-w-full object-contain" />
+          </div>
         ) : (
           <div className="flex h-12 w-12 items-center justify-center rounded-input border border-border bg-surface text-sm font-semibold text-muted-foreground">
             {companyInitial}
