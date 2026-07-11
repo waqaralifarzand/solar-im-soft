@@ -97,6 +97,12 @@ model Company {
   address            String?
   invoiceHeaderNote  String?
   invoiceFooterNote  String?
+  bankName           String?
+  accountTitle       String?
+  accountNumber      String?
+  iban               String?
+  jazzCashNumber     String?
+  easyPaisaNumber    String?
   taxRate            Decimal       @default(0) @db.Decimal(5, 2)
   currency           String        @default("PKR")
   lakhCroreFormat    Boolean       @default(true)

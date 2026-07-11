@@ -332,6 +332,7 @@ Feel: warm-white minimalism, editorial, flat. Cards on soft off-white, hairline 
 - `--muted-foreground: #6F6B66`
 - `--accent: company.accentColor` (runtime, per tenant; default #111110)
 - Destructive: #D92D20; Success: #12A150; Warning: #F79009 (status chips only, at 10% bg tint + solid text)
+- `--chart-primary: #2563EB` / `--chart-primary-fill: #DBEAFE` (fixed data-visualization blue, independent of the tenant accent color — used for every chart mark on the dashboard and in reports; light fill for hover/highlight states)
 
 ### Rules
 - Radius: cards & modals 20px; inputs & selects 12px; buttons & chips fully pilled (9999px); table row hover uses surface fill, no radius

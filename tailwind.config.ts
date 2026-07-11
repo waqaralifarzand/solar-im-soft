@@ -20,6 +20,8 @@ const config: Config = {
         destructive: "var(--destructive)",
         success: "var(--success)",
         warning: "var(--warning)",
+        "chart-primary": "var(--chart-primary)",
+        "chart-primary-fill": "var(--chart-primary-fill)",
       },
       borderRadius: {
         card: "20px",

@@ -26,10 +26,11 @@ export function MonthRevenueChart({ byDay, currency, lakhCroreFormat }: MonthRev
               <CartesianGrid strokeDasharray="3 3" stroke="#EBE8E4" />
               <XAxis dataKey="date" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip formatter={(value) => formatMoney(Number(value), fmt)} />
-              {/* Neutral fill, not the tenant accent color — ARCHITECTURE.md §5 reserves
-                  accent for the nav dot, primary buttons, and small highlights only. */}
-              <Bar dataKey="revenue" fill="#111110" radius={[4, 4, 0, 0]} />
+              <Tooltip formatter={(value) => formatMoney(Number(value), fmt)} cursor={{ fill: "#DBEAFE" }} />
+              {/* Fixed chart-primary token (#2563EB, app/globals.css), not the tenant accent
+                  color — ARCHITECTURE.md §5 reserves accent for the nav dot, primary buttons,
+                  and small highlights only; charts always use this data-visualization blue. */}
+              <Bar dataKey="revenue" fill="#2563EB" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}

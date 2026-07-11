@@ -35,6 +35,12 @@ export async function GET(_req: Request, { params }: { params: { token: string }
         accentColor: true,
         currency: true,
         lakhCroreFormat: true,
+        bankName: true,
+        accountTitle: true,
+        accountNumber: true,
+        iban: true,
+        jazzCashNumber: true,
+        easyPaisaNumber: true,
       },
     }),
   ]);

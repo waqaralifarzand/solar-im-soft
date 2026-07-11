@@ -8,6 +8,7 @@ import type { QuotationDetail } from "@/lib/queries/quotations";
 const BORDER = "#EBE8E4";
 const MUTED = "#6F6B66";
 const FOREGROUND = "#111110";
+const SURFACE = "#F5F3F1";
 
 const styles = StyleSheet.create({
   page: { padding: 36, fontSize: 10, color: FOREGROUND, fontFamily: "Helvetica" },
@@ -32,6 +33,11 @@ const styles = StyleSheet.create({
   summaryRow: { flexDirection: "row", width: 220, justifyContent: "space-between", paddingVertical: 2 },
   summaryBold: { fontFamily: "Helvetica-Bold" },
   summaryDivider: { width: 220, borderTop: `1px solid ${BORDER}`, marginVertical: 4 },
+  paymentDetails: { marginTop: 16, padding: 10, backgroundColor: SURFACE, borderRadius: 6, maxWidth: 260 },
+  paymentDetailsTitle: { fontSize: 8, color: MUTED, textTransform: "uppercase", marginBottom: 6 },
+  paymentDetailsRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 1.5, gap: 12 },
+  paymentDetailsLabel: { fontSize: 9, color: MUTED },
+  paymentDetailsValue: { fontSize: 9, fontFamily: "Helvetica-Bold" },
   footerNote: { marginTop: 32, fontSize: 8, color: MUTED, textAlign: "center" },
 });
 
@@ -46,6 +52,12 @@ export interface QuotationPdfCompany {
   accentColor: string;
   currency: string;
   lakhCroreFormat: boolean;
+  bankName: string | null;
+  accountTitle: string | null;
+  accountNumber: string | null;
+  iban: string | null;
+  jazzCashNumber: string | null;
+  easyPaisaNumber: string | null;
 }
 
 interface QuotationPdfDocumentProps {
@@ -62,10 +74,27 @@ function SummaryRow({ label, value, bold }: { label: string; value: string; bold
   );
 }
 
+function PaymentDetailsRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.paymentDetailsRow}>
+      <Text style={styles.paymentDetailsLabel}>{label}</Text>
+      <Text style={styles.paymentDetailsValue}>{value}</Text>
+    </View>
+  );
+}
+
 export function QuotationPdfDocument({ company, quotation }: QuotationPdfDocumentProps) {
   const fmt = { currency: company.currency, lakhCroreFormat: company.lakhCroreFormat };
   const money = (v: string) => formatMoney(v, fmt);
   const customerLabel = quotation.customer?.name ?? quotation.customerNameFree ?? "—";
+  const hasPaymentDetails = Boolean(
+    company.bankName ||
+      company.accountTitle ||
+      company.accountNumber ||
+      company.iban ||
+      company.jazzCashNumber ||
+      company.easyPaisaNumber,
+  );
 
   return (
     <Document title={quotation.quoteNo}>
@@ -124,6 +153,18 @@ export function QuotationPdfDocument({ company, quotation }: QuotationPdfDocumen
           <View style={styles.summaryDivider} />
           <SummaryRow label="Total" value={money(quotation.total)} bold />
         </View>
+
+        {hasPaymentDetails && (
+          <View style={styles.paymentDetails}>
+            <Text style={styles.paymentDetailsTitle}>Payment details</Text>
+            {company.bankName && <PaymentDetailsRow label="Bank" value={company.bankName} />}
+            {company.accountTitle && <PaymentDetailsRow label="Account title" value={company.accountTitle} />}
+            {company.accountNumber && <PaymentDetailsRow label="Account number" value={company.accountNumber} />}
+            {company.iban && <PaymentDetailsRow label="IBAN" value={company.iban} />}
+            {company.jazzCashNumber && <PaymentDetailsRow label="JazzCash" value={company.jazzCashNumber} />}
+            {company.easyPaisaNumber && <PaymentDetailsRow label="EasyPaisa" value={company.easyPaisaNumber} />}
+          </View>
+        )}
 
         {company.invoiceFooterNote && <Text style={styles.footerNote}>{company.invoiceFooterNote}</Text>}
       </Page>

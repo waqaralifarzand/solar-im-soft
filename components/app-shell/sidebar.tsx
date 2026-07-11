@@ -27,23 +27,36 @@ export function Sidebar({ role, companyName, logoUrl, userName, userRole, isImpe
     <aside
       className={cn(
         "flex h-full flex-col justify-between border-r border-border bg-surface transition-[width]",
-        collapsed ? "w-16" : "w-60",
+        collapsed ? "w-16" : "w-[216px]",
       )}
     >
       <div>
-        <div className="flex h-16 items-center gap-2 px-4">
-          {logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- logoUrl may be a base64 data URI
-            <img src={logoUrl} alt={companyName} className="h-7 w-7 rounded-md object-cover" />
-          ) : (
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent text-xs font-semibold text-white">
-              {companyName.charAt(0).toUpperCase()}
-            </div>
-          )}
-          {!collapsed && (
-            <span className="truncate text-[13px] font-medium text-foreground">{companyName}</span>
-          )}
-        </div>
+        {collapsed ? (
+          <div className="flex h-16 items-center justify-center px-2">
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- logoUrl may be a base64 data URI
+              <img src={logoUrl} alt={companyName} className="h-8 w-8 rounded-md object-cover" />
+            ) : (
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent text-xs font-semibold text-white">
+                {companyName.charAt(0).toUpperCase()}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-2 px-4 pb-4 pt-6">
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- logoUrl may be a base64 data URI
+              <img src={logoUrl} alt={companyName} className="h-12 w-12 rounded-xl object-cover" />
+            ) : (
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent text-lg font-semibold text-white">
+                {companyName.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <span className="w-full truncate text-center text-[13px] font-medium text-foreground">
+              {companyName}
+            </span>
+          </div>
+        )}
 
         <nav className="flex flex-col gap-1 px-3">
           {navItems.map((item) => {
@@ -78,7 +91,7 @@ export function Sidebar({ role, companyName, logoUrl, userName, userRole, isImpe
             <p className="truncate text-xs text-muted-foreground">{userRole}</p>
           </div>
         )}
-        <div className="flex items-center gap-1">
+        <div className={cn("flex items-center gap-1", collapsed && "flex-col")}>
           {!isImpersonating && (
             <ChangePasswordDialog
               trigger={

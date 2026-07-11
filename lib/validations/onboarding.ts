@@ -33,3 +33,13 @@ export const invoiceNotesSchema = z.object({
   invoiceFooterNote: z.string().max(500, "Keep it under 500 characters"),
 });
 export type InvoiceNotesInput = z.infer<typeof invoiceNotesSchema>;
+
+export const paymentDetailsSchema = z.object({
+  bankName: z.string().max(120, "Keep it under 120 characters"),
+  accountTitle: z.string().max(120, "Keep it under 120 characters"),
+  accountNumber: z.string().max(60, "Keep it under 60 characters"),
+  iban: z.string().max(60, "Keep it under 60 characters"),
+  jazzCashNumber: z.string().max(30, "Keep it under 30 characters"),
+  easyPaisaNumber: z.string().max(30, "Keep it under 30 characters"),
+});
+export type PaymentDetailsInput = z.infer<typeof paymentDetailsSchema>;
