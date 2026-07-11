@@ -111,9 +111,11 @@ export default async function globalSetup(): Promise<void> {
     "/reports/customer-dues",
     "/reports/top-products",
     "/settings/branding",
+    "/settings/payment",
     "/settings/tax",
     "/settings/users",
     "/settings/audit",
+    "/inventory/import",
   ];
 
   for (const route of routes) {

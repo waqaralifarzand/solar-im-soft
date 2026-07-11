@@ -7,10 +7,12 @@ import {
   brandingSchema,
   taxCurrencySchema,
   invoiceNotesSchema,
+  paymentDetailsSchema,
   type CompanyNameInput,
   type BrandingInput,
   type TaxCurrencyInput,
   type InvoiceNotesInput,
+  type PaymentDetailsInput,
 } from "@/lib/validations/onboarding";
 
 export async function updateCompanyName(input: CompanyNameInput): Promise<void> {
@@ -48,6 +50,22 @@ export async function updateInvoiceNotes(input: InvoiceNotesInput): Promise<void
     data: {
       invoiceHeaderNote: parsed.invoiceHeaderNote || null,
       invoiceFooterNote: parsed.invoiceFooterNote || null,
+    },
+  });
+}
+
+export async function updatePaymentDetails(input: PaymentDetailsInput): Promise<void> {
+  const ctx = await requireRole("ADMIN");
+  const parsed = paymentDetailsSchema.parse(input);
+  await prisma.company.update({
+    where: { id: ctx.companyId },
+    data: {
+      bankName: parsed.bankName || null,
+      accountTitle: parsed.accountTitle || null,
+      accountNumber: parsed.accountNumber || null,
+      iban: parsed.iban || null,
+      jazzCashNumber: parsed.jazzCashNumber || null,
+      easyPaisaNumber: parsed.easyPaisaNumber || null,
     },
   });
 }

@@ -149,3 +149,20 @@ Rules: one phase per Claude Code session. Read CLAUDE.md, ARCHITECTURE.md, and S
 - [ ] Demo seed produces a convincing demo account
 - [ ] Lighthouse pass reasonable, no console errors, build clean
 - [ ] README deploy guide verified start-to-finish
+
+---
+
+## Phase 9 — Post-v1 improvements from owner review
+**Scope**
+- Sidebar: reduce fixed width 240px → 216px, enlarge the company logo area at the top (larger logo render, comfortable padding, name below or beside depending on what fits), keep collapse-to-icon-rail working
+- Payment details: optional Company fields (bank name, account title, account number, IBAN, JazzCash number, EasyPaisa number) editable via Settings, shown as a "Payment details" block on the A4 invoice PDF, quotation PDF, and public shared PDF — only rendered when at least one field is set
+- Product CSV/XLSX import: Import button on /inventory, upload → column mapping preview → per-row validation shown before writing → transactional write of valid rows only, categories auto-created by name, duplicate SKUs (in-file or against existing) rejected with row-level messages, opening stock writes StockAdjustment(OPENING), downloadable template, 500-row cap
+- Chart color: dashboard revenue chart and report charts use a fixed `chart-primary` design token (#2563EB / light blue fill), independent of the tenant accent color
+
+**Done checklist**
+- [ ] Sidebar renders correctly at 216px and in collapsed icon-rail state
+- [ ] Payment details block appears on a generated PDF when set, absent when not
+- [ ] CSV import happy path creates products with correct stock and auto-created categories
+- [ ] Import rejects bad rows / duplicate SKUs with zero partial writes
+- [ ] xlsx import variant works
+- [ ] Chart color is the fixed token, not the tenant accent color

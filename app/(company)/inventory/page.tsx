@@ -26,9 +26,16 @@ export default async function InventoryPage() {
           <h1 className="text-[24px] font-semibold tracking-[-0.01em] text-foreground">Inventory</h1>
           <p className="mt-1 text-sm text-muted-foreground">Categories, products, and stock adjustments.</p>
         </div>
-        <Link href="/inventory/new">
-          <Button size="page">New product</Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/inventory/import">
+            <Button size="page" variant="secondary">
+              Import
+            </Button>
+          </Link>
+          <Link href="/inventory/new">
+            <Button size="page">New product</Button>
+          </Link>
+        </div>
       </div>
       <InventoryTabs />
       <ProductsTable

@@ -13,6 +13,11 @@
   --destructive: #d92d20;
   --success: #12a150;
   --warning: #f79009;
+  /* Data-visualization blue — fixed, independent of company.accentColor. Used for chart
+     marks (bars/lines) so per-tenant branding never accidentally makes a chart unreadable
+     or clashes with status-chip colors. See ARCHITECTURE.md §5. */
+  --chart-primary: #2563eb;
+  --chart-primary-fill: #dbeafe;
 }
 
 body {
