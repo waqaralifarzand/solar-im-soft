@@ -15,8 +15,10 @@ export function BrandingPreviewCard({ companyName, logoDataUrl, accentColor }: B
 
       <div className="flex items-center gap-2 rounded-input border border-border bg-white p-3">
         {logoDataUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- logo is a base64 data URI
-          <img src={logoDataUrl} alt={companyName} className="h-7 w-7 rounded-md object-cover" />
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element -- logo is a base64 data URI */}
+            <img src={logoDataUrl} alt={companyName} className="max-h-full max-w-full object-contain" />
+          </div>
         ) : (
           <div
             className="flex h-7 w-7 items-center justify-center rounded-md text-xs font-semibold text-white"

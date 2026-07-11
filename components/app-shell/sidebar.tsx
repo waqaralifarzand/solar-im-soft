@@ -35,7 +35,7 @@ export function Sidebar({ role, companyName, logoUrl, userName, userRole, isImpe
           <div className="flex h-16 items-center justify-center px-2">
             {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element -- logoUrl may be a base64 data URI
-              <img src={logoUrl} alt={companyName} className="h-8 w-8 rounded-md object-cover" />
+              <img src={logoUrl} alt={companyName} className="max-h-8 max-w-8 object-contain" />
             ) : (
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent text-xs font-semibold text-white">
                 {companyName.charAt(0).toUpperCase()}
@@ -43,16 +43,18 @@ export function Sidebar({ role, companyName, logoUrl, userName, userRole, isImpe
             )}
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-2 px-4 pb-4 pt-6">
+          <div className="flex flex-col items-center gap-2 pb-4 pt-6">
             {logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element -- logoUrl may be a base64 data URI
-              <img src={logoUrl} alt={companyName} className="h-12 w-12 rounded-xl object-cover" />
+              <div className="flex h-14 w-full items-center justify-center px-4">
+                {/* eslint-disable-next-line @next/next/no-img-element -- logoUrl may be a base64 data URI */}
+                <img src={logoUrl} alt={companyName} className="max-h-full max-w-full object-contain" />
+              </div>
             ) : (
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent text-lg font-semibold text-white">
                 {companyName.charAt(0).toUpperCase()}
               </div>
             )}
-            <span className="w-full truncate text-center text-[13px] font-medium text-foreground">
+            <span className="w-full truncate text-center text-[13px] font-medium text-foreground px-4">
               {companyName}
             </span>
           </div>
