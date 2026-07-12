@@ -410,6 +410,8 @@ model Return {
   creator User    @relation(fields: [createdBy], references: [id])
 
   items ReturnItem[]
+
+  @@index([companyId, createdAt])
 }
 
 model ReturnItem {

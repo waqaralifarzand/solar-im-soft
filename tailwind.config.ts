@@ -34,6 +34,15 @@ const config: Config = {
       spacing: {
         "row-dense": "44px",
       },
+      keyframes: {
+        "route-progress": {
+          "0%": { transform: "scaleX(0)" },
+          "100%": { transform: "scaleX(0.85)" },
+        },
+      },
+      animation: {
+        "route-progress": "route-progress 1s cubic-bezier(0.1, 0.5, 0.1, 1) forwards",
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],
