@@ -1,11 +1,13 @@
+import { Suspense } from "react";
 import { Sidebar } from "@/components/app-shell/sidebar";
 import { Topbar } from "@/components/app-shell/topbar";
+import { RouteProgress } from "@/components/app-shell/route-progress";
 import type { Role } from "@prisma/client";
 
 interface AppShellProps {
   children: React.ReactNode;
   companyName: string;
-  logoUrl: string | null;
+  hasLogo: boolean;
   userName: string;
   role: Role;
   isImpersonating?: boolean;
@@ -14,17 +16,20 @@ interface AppShellProps {
 export function AppShell({
   children,
   companyName,
-  logoUrl,
+  hasLogo,
   userName,
   role,
   isImpersonating = false,
 }: AppShellProps) {
   return (
     <div className="flex h-full">
+      <Suspense fallback={null}>
+        <RouteProgress />
+      </Suspense>
       <Sidebar
         role={role}
         companyName={companyName}
-        logoUrl={logoUrl}
+        hasLogo={hasLogo}
         userName={userName}
         userRole={role}
         isImpersonating={isImpersonating}

@@ -12,16 +12,18 @@ import type { Role } from "@prisma/client";
 interface SidebarProps {
   role: Role;
   companyName: string;
-  logoUrl: string | null;
+  hasLogo: boolean;
   userName: string;
   userRole: string;
   isImpersonating: boolean;
 }
 
-export function Sidebar({ role, companyName, logoUrl, userName, userRole, isImpersonating }: SidebarProps) {
+export function Sidebar({ role, companyName, hasLogo, userName, userRole, isImpersonating }: SidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [logoFailed, setLogoFailed] = useState(false);
   const navItems = getNavItemsForRole(role);
+  const showLogo = hasLogo && !logoFailed;
 
   return (
     <aside
@@ -33,9 +35,14 @@ export function Sidebar({ role, companyName, logoUrl, userName, userRole, isImpe
       <div>
         {collapsed ? (
           <div className="flex h-16 items-center justify-center px-2">
-            {logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element -- logoUrl may be a base64 data URI
-              <img src={logoUrl} alt={companyName} className="max-h-8 max-w-8 object-contain" />
+            {showLogo ? (
+              // eslint-disable-next-line @next/next/no-img-element -- served from a cached route, not a data URI
+              <img
+                src="/api/company/logo"
+                alt={companyName}
+                className="max-h-8 max-w-8 object-contain"
+                onError={() => setLogoFailed(true)}
+              />
             ) : (
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent text-xs font-semibold text-white">
                 {companyName.charAt(0).toUpperCase()}
@@ -44,10 +51,15 @@ export function Sidebar({ role, companyName, logoUrl, userName, userRole, isImpe
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2 pb-4 pt-6">
-            {logoUrl ? (
+            {showLogo ? (
               <div className="flex h-14 w-full items-center justify-center px-4">
-                {/* eslint-disable-next-line @next/next/no-img-element -- logoUrl may be a base64 data URI */}
-                <img src={logoUrl} alt={companyName} className="max-h-full max-w-full object-contain" />
+                {/* eslint-disable-next-line @next/next/no-img-element -- served from a cached route, not a data URI */}
+                <img
+                  src="/api/company/logo"
+                  alt={companyName}
+                  className="max-h-full max-w-full object-contain"
+                  onError={() => setLogoFailed(true)}
+                />
               </div>
             ) : (
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent text-lg font-semibold text-white">
