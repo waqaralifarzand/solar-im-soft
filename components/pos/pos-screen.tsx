@@ -245,7 +245,7 @@ export function PosScreen({ companyName, products, customers, taxRate, currency,
             className="pl-9"
           />
         </div>
-        <div className="grid flex-1 auto-rows-min grid-cols-2 gap-3 overflow-y-auto sm:grid-cols-3 xl:grid-cols-4">
+        <div className="grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-3 overflow-y-auto sm:grid-cols-3 xl:grid-cols-4">
           {filteredProducts.map((p) => (
             <button
               key={p.id}
@@ -278,23 +278,51 @@ export function PosScreen({ companyName, products, customers, taxRate, currency,
 
       {/* Right: cart + payment, sticky totals footer */}
       <div className="flex min-h-0 flex-col rounded-card border border-border bg-card">
-        <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+        <div className="flex items-center gap-2 border-b border-border px-4 py-2">
           <ShoppingCart size={16} className="text-muted-foreground" />
           <span className="text-sm font-medium text-foreground">Cart ({cart.length})</span>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-3">
+        <div className="min-h-0 flex-1 overflow-y-auto px-4">
           {cart.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">Search and add products to start a sale</p>
           ) : (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col">
+              <div className="grid grid-cols-[1fr_repeat(3,64px)_18px] items-center gap-2 pb-1 pt-2 text-[11px] text-muted-foreground">
+                <span>Item</span>
+                <span className="text-right">Qty</span>
+                <span className="text-right">Price</span>
+                <span className="text-right">Disc.</span>
+                <span />
+              </div>
               {cart.map((line) => (
-                <div key={line.productId} className="flex flex-col gap-2 border-b border-border pb-3 last:border-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{line.name}</p>
-                      <p className="text-xs text-muted-foreground">{line.sku}</p>
+                <div key={line.productId} className="border-b border-border py-2 last:border-0">
+                  <div className="grid grid-cols-[1fr_repeat(3,64px)_18px] items-center gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">{line.name}</p>
+                      <p className="truncate text-xs text-muted-foreground">{line.sku}</p>
                     </div>
+                    <Input
+                      aria-label={`Qty for ${line.name}`}
+                      inputMode="numeric"
+                      value={line.qty}
+                      onChange={(e) => updateLine(line.productId, { qty: e.target.value })}
+                      className="h-8 px-1.5 text-right text-sm"
+                    />
+                    <Input
+                      aria-label={`Price for ${line.name}`}
+                      inputMode="decimal"
+                      value={line.unitPrice}
+                      onChange={(e) => updateLine(line.productId, { unitPrice: e.target.value })}
+                      className="h-8 px-1.5 text-right text-sm"
+                    />
+                    <Input
+                      aria-label={`Discount for ${line.name}`}
+                      inputMode="decimal"
+                      value={line.lineDiscount}
+                      onChange={(e) => updateLine(line.productId, { lineDiscount: e.target.value })}
+                      className="h-8 px-1.5 text-right text-sm"
+                    />
                     <button
                       type="button"
                       onClick={() => removeLine(line.productId)}
@@ -304,40 +332,8 @@ export function PosScreen({ companyName, products, customers, taxRate, currency,
                       <X size={14} />
                     </button>
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="flex flex-col gap-1">
-                      <Label htmlFor={`qty-${line.productId}`} className="text-[11px]">Qty</Label>
-                      <Input
-                        id={`qty-${line.productId}`}
-                        inputMode="numeric"
-                        value={line.qty}
-                        onChange={(e) => updateLine(line.productId, { qty: e.target.value })}
-                        className="h-8 px-2 text-sm"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <Label htmlFor={`price-${line.productId}`} className="text-[11px]">Price</Label>
-                      <Input
-                        id={`price-${line.productId}`}
-                        inputMode="decimal"
-                        value={line.unitPrice}
-                        onChange={(e) => updateLine(line.productId, { unitPrice: e.target.value })}
-                        className="h-8 px-2 text-sm"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <Label htmlFor={`discount-${line.productId}`} className="text-[11px]">Discount</Label>
-                      <Input
-                        id={`discount-${line.productId}`}
-                        inputMode="decimal"
-                        value={line.lineDiscount}
-                        onChange={(e) => updateLine(line.productId, { lineDiscount: e.target.value })}
-                        className="h-8 px-2 text-sm"
-                      />
-                    </div>
-                  </div>
                   {Number(line.qty) > line.stockQty && (
-                    <p className="text-xs text-destructive">Only {line.stockQty} {line.unit} in stock</p>
+                    <p className="pt-1 text-xs text-destructive">Only {line.stockQty} {line.unit} in stock</p>
                   )}
                 </div>
               ))}
@@ -345,10 +341,15 @@ export function PosScreen({ companyName, products, customers, taxRate, currency,
           )}
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-border p-4">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="posCustomer">Customer</Label>
-            <Select id="posCustomer" value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
+        <div className="flex flex-col gap-2 border-t border-border p-3">
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="posCustomer" className="text-[11px]">Customer</Label>
+            <Select
+              id="posCustomer"
+              value={customerId}
+              onChange={(e) => setCustomerId(e.target.value)}
+              className="h-8 px-2 text-sm"
+            >
               <option value="">Walk-in / cash sale</option>
               {customers.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -414,10 +415,14 @@ export function PosScreen({ companyName, products, customers, taxRate, currency,
             </div>
           </div>
 
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="posNote" className="text-[11px]">Note (optional)</Label>
-            <Input id="posNote" value={note} onChange={(e) => setNote(e.target.value)} className="h-8 px-2 text-sm" />
-          </div>
+          <Input
+            id="posNote"
+            aria-label="Note (optional)"
+            placeholder="Note (optional)"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            className="h-8 px-2 text-sm"
+          />
 
           {Number(amountPaidNow) < totals.total && (
             <p className="text-xs text-muted-foreground">

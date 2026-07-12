@@ -17,18 +17,20 @@ export default async function PosPage() {
   ]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4">
+    <div className="flex h-full min-h-0 flex-col gap-2">
       <div>
         <h1 className="text-[24px] font-semibold tracking-[-0.01em] text-foreground">Point of sale</h1>
       </div>
-      <PosScreen
-        companyName={company.name}
-        products={products}
-        customers={customers}
-        taxRate={company.taxRate.toString()}
-        currency={company.currency}
-        lakhCroreFormat={company.lakhCroreFormat}
-      />
+      <div className="min-h-0 flex-1">
+        <PosScreen
+          companyName={company.name}
+          products={products}
+          customers={customers}
+          taxRate={company.taxRate.toString()}
+          currency={company.currency}
+          lakhCroreFormat={company.lakhCroreFormat}
+        />
+      </div>
     </div>
   );
 }
