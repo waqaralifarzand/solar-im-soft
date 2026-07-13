@@ -135,9 +135,10 @@ export async function importProducts(rows: ParsedProductRow[]): Promise<ImportPr
 
         return { createdCount, categoriesCreated };
       },
-      // A 500-row import can run well past Prisma's 5s default interactive-transaction
-      // timeout (each row is several sequential queries) — this is still one atomic
-      // transaction, just given more room to complete before an automatic rollback.
+      // Deliberately higher than lib/transactionHelpers.ts's DEFAULT_TX_OPTIONS (20s): a
+      // 500-row import can run well past that (each row is several sequential queries) —
+      // this is still one atomic transaction, just given more room to complete before an
+      // automatic rollback. maxWait matches the shared default.
       { timeout: 60_000, maxWait: 10_000 },
     );
   } catch (error) {

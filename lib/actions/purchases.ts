@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/requireRole";
 import { nextPoNo } from "@/lib/generatePoNo";
+import { DEFAULT_TX_OPTIONS, toUserFacingError } from "@/lib/transactionHelpers";
 import {
   createPurchaseOrderSchema,
   updatePurchaseOrderStatusSchema,
@@ -73,7 +74,7 @@ export async function createPurchaseOrder(
     });
 
     return { id: po.id, poNo };
-  });
+  }, DEFAULT_TX_OPTIONS);
 }
 
 export async function updatePurchaseOrderStatus(
@@ -89,6 +90,10 @@ export async function updatePurchaseOrderStatus(
     throw new Error("This purchase order has already been received and its status can't change");
   }
 
+  // Prisma's batch/array $transaction form only accepts { isolationLevel }, not
+  // maxWait/timeout — those apply to the interactive (callback) form only. This batch is
+  // two simple writes with no risk of the P2028 timeout the interactive transactions below
+  // were fixed for, so no options are needed here.
   await prisma.$transaction([
     prisma.purchaseOrder.update({ where: { id: poId }, data: { status: parsed.status } }),
     prisma.auditLog.create({
@@ -108,56 +113,96 @@ export async function receivePurchaseOrder(poId: string, input: ReceivePurchaseO
   const ctx = await requireRole(...PURCHASE_ROLES);
   const parsed = receivePurchaseOrderSchema.parse(input);
 
-  await prisma.$transaction(async (tx) => {
-    // Atomic conditional flip claims the "receive" for exactly one concurrent caller: if two
-    // requests race, only one WHERE match can succeed, and the loser's re-checked WHERE no
-    // longer matches once the winner's status commits, so it gets count === 0. Same
-    // optimistic-update technique as recordInvoicePayment (Phase 5A).
-    const claimed = await tx.purchaseOrder.updateMany({
-      where: { id: poId, companyId: ctx.companyId, status: { not: "RECEIVED" } },
-      data: { status: "RECEIVED", receivedAt: new Date() },
-    });
-    if (claimed.count === 0) {
-      throw new Error("This purchase order has already been received");
-    }
-
-    const po = await tx.purchaseOrder.findFirst({
-      where: { id: poId, companyId: ctx.companyId },
-      include: { items: true },
-    });
-    if (!po) throw new Error("Purchase order not found");
-
-    const updateCostPriceSet = new Set(parsed.updateCostPriceProductIds);
-
-    for (const item of po.items) {
-      await tx.product.update({
-        where: { id: item.productId },
-        data: {
-          stockQty: { increment: item.qty },
-          ...(updateCostPriceSet.has(item.productId) ? { costPrice: item.unitCost } : {}),
-        },
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Atomic conditional flip claims the "receive" for exactly one concurrent caller: if two
+      // requests race, only one WHERE match can succeed, and the loser's re-checked WHERE no
+      // longer matches once the winner's status commits, so it gets count === 0. Same
+      // optimistic-update technique as recordInvoicePayment (Phase 5A).
+      const claimed = await tx.purchaseOrder.updateMany({
+        where: { id: poId, companyId: ctx.companyId, status: { not: "RECEIVED" } },
+        data: { status: "RECEIVED", receivedAt: new Date() },
       });
-      await tx.stockAdjustment.create({
+      if (claimed.count === 0) {
+        throw new Error("This purchase order has already been received");
+      }
+
+      const po = await tx.purchaseOrder.findFirst({
+        where: { id: poId, companyId: ctx.companyId },
+        include: { items: true },
+      });
+      if (!po) throw new Error("Purchase order not found");
+
+      const updateCostPriceSet = new Set(parsed.updateCostPriceProductIds);
+
+      // Aggregate by product first — a PO can carry the same product on more than one line —
+      // so stock and cost price are each computed once per product, not once per line. Qty
+      // increments are summed (order-independent); when a cost update is requested for a
+      // product with more than one line, the last line's unitCost wins, same as the previous
+      // sequential-update loop (later updateMany overwrite semantics).
+      const qtyByProduct = new Map<string, number>();
+      const costByProduct = new Map<string, Prisma.Decimal>();
+      for (const item of po.items) {
+        qtyByProduct.set(item.productId, (qtyByProduct.get(item.productId) ?? 0) + item.qty);
+        if (updateCostPriceSet.has(item.productId)) {
+          costByProduct.set(item.productId, item.unitCost);
+        }
+      }
+      const uniqueProductIds = [...qtyByProduct.keys()];
+
+      // Split into two groups instead of one 3-array unnest with nulls standing in for "no
+      // cost change" — passing a mixed null/non-null array through Prisma's raw-query binary
+      // protocol to a numeric[] parameter corrupts the wire encoding (reproduced directly
+      // against Postgres: "insufficient data left in message"). Two plain, all-non-null bulk
+      // updates sidestep that entirely and are still just 1-2 round trips total, not one per
+      // product.
+      const withCostUpdate = uniqueProductIds.filter((id) => costByProduct.has(id));
+      const withoutCostUpdate = uniqueProductIds.filter((id) => !costByProduct.has(id));
+
+      if (withCostUpdate.length > 0) {
+        const qtys = withCostUpdate.map((id) => qtyByProduct.get(id)!);
+        const costs = withCostUpdate.map((id) => costByProduct.get(id)!.toString());
+        await tx.$executeRaw`
+          UPDATE "Product" AS p
+          SET "stockQty" = p."stockQty" + v.qty,
+              "costPrice" = v.cost
+          FROM unnest(${withCostUpdate}::text[], ${qtys}::int[], ${costs}::numeric[]) AS v(id, qty, cost)
+          WHERE p.id = v.id AND p."companyId" = ${ctx.companyId}
+        `;
+      }
+      if (withoutCostUpdate.length > 0) {
+        const qtys = withoutCostUpdate.map((id) => qtyByProduct.get(id)!);
+        await tx.$executeRaw`
+          UPDATE "Product" AS p
+          SET "stockQty" = p."stockQty" + v.qty
+          FROM unnest(${withoutCostUpdate}::text[], ${qtys}::int[]) AS v(id, qty)
+          WHERE p.id = v.id AND p."companyId" = ${ctx.companyId}
+        `;
+      }
+
+      await tx.stockAdjustment.createMany({
+        data: uniqueProductIds.map((productId) => ({
+          companyId: ctx.companyId,
+          productId,
+          userId: ctx.userId,
+          qtyChange: qtyByProduct.get(productId)!,
+          reason: "PURCHASE" as const,
+          refId: po.id,
+        })),
+      });
+
+      await tx.auditLog.create({
         data: {
           companyId: ctx.companyId,
-          productId: item.productId,
-          userId: ctx.userId,
-          qtyChange: item.qty,
-          reason: "PURCHASE",
-          refId: po.id,
+          userId: ctx.impersonatedBy ?? ctx.userId,
+          action: "po.receive",
+          entity: "PurchaseOrder",
+          entityId: poId,
+          meta: { poNo: po.poNo, itemCount: po.items.length, costPriceUpdatedFor: [...updateCostPriceSet] },
         },
       });
-    }
-
-    await tx.auditLog.create({
-      data: {
-        companyId: ctx.companyId,
-        userId: ctx.impersonatedBy ?? ctx.userId,
-        action: "po.receive",
-        entity: "PurchaseOrder",
-        entityId: poId,
-        meta: { poNo: po.poNo, itemCount: po.items.length, costPriceUpdatedFor: [...updateCostPriceSet] },
-      },
-    });
-  });
+    }, DEFAULT_TX_OPTIONS);
+  } catch (error) {
+    throw toUserFacingError(error, "Receiving this purchase order failed due to a temporary issue — please try again.");
+  }
 }
