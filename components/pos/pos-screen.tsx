@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, X, ShoppingCart } from "lucide-react";
 import { createInvoiceSchema, PAYMENT_METHODS } from "@/lib/validations/invoices";
-import { createInvoice } from "@/lib/actions/invoices";
+import { completeSale } from "@/lib/actions/invoices";
 import { computeInvoiceTotals } from "@/lib/invoiceCalc";
 import { formatMoney } from "@/lib/formatMoney";
 import type { PosProduct, CustomerOption } from "@/lib/queries/invoices";
@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 
 const METHOD_LABELS: Record<string, string> = {
@@ -53,6 +54,7 @@ interface CompletedSale {
 
 export function PosScreen({ companyName, products, customers, taxRate, currency, lakhCroreFormat }: PosScreenProps) {
   const router = useRouter();
+  const showToast = useToast();
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [customerId, setCustomerId] = useState("");
@@ -169,40 +171,44 @@ export function PosScreen({ companyName, products, customers, taxRate, currency,
     }
 
     setSubmitting(true);
-    try {
-      const { id, invoiceNo } = await createInvoice(parsed.data);
-      const customerName = customerId ? customers.find((c) => c.id === customerId)?.name ?? null : null;
-      setCompletedSale({
-        id,
-        invoiceNo,
-        receiptData: {
-          companyName,
-          invoiceNo,
-          createdAt: new Date().toISOString(),
-          customerName,
-          items: cart.map((l, i) => ({
-            name: l.name,
-            qty: Number(l.qty) || 0,
-            unitPrice: l.unitPrice,
-            lineTotal: String(totals.lineTotals[i] ?? 0),
-          })),
-          subtotal: totals.subtotal.toFixed(2),
-          discount: (Number(billDiscount) || 0).toFixed(2),
-          taxAmount: totals.taxAmount.toFixed(2),
-          total: totals.total.toFixed(2),
-          paidAmount: paidNow.toFixed(2),
-          currency,
-          lakhCroreFormat,
-        },
-      });
-      // Refreshes the server-fetched product/customer lists (stock just changed) without
-      // navigating away — the cashier stays on /pos between sales.
-      router.refresh();
-    } catch (error) {
-      setFormError(error instanceof Error ? error.message : "Something went wrong");
-    } finally {
-      setSubmitting(false);
+    const result = await completeSale(parsed.data);
+    setSubmitting(false);
+
+    if (!result.ok) {
+      // Cart, customer, discount, and payment fields are left exactly as entered so the
+      // cashier can just hit "Complete sale" again instead of re-keying everything.
+      showToast(result.error, "error");
+      return;
     }
+
+    const { id, invoiceNo } = result;
+    const customerName = customerId ? customers.find((c) => c.id === customerId)?.name ?? null : null;
+    setCompletedSale({
+      id,
+      invoiceNo,
+      receiptData: {
+        companyName,
+        invoiceNo,
+        createdAt: new Date().toISOString(),
+        customerName,
+        items: cart.map((l, i) => ({
+          name: l.name,
+          qty: Number(l.qty) || 0,
+          unitPrice: l.unitPrice,
+          lineTotal: String(totals.lineTotals[i] ?? 0),
+        })),
+        subtotal: totals.subtotal.toFixed(2),
+        discount: (Number(billDiscount) || 0).toFixed(2),
+        taxAmount: totals.taxAmount.toFixed(2),
+        total: totals.total.toFixed(2),
+        paidAmount: paidNow.toFixed(2),
+        currency,
+        lakhCroreFormat,
+      },
+    });
+    // Refreshes the server-fetched product/customer lists (stock just changed) without
+    // navigating away — the cashier stays on /pos between sales.
+    router.refresh();
   }
 
   function startNewSale() {

@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/requireRole";
 import { suggestSku as suggestSkuQuery } from "@/lib/queries/inventory";
+import { DEFAULT_TX_OPTIONS } from "@/lib/transactionHelpers";
 import {
   categorySchema,
   createProductSchema,
@@ -150,7 +151,7 @@ export async function createProduct(input: CreateProductInput): Promise<{ id: st
       });
 
       return product.id;
-    });
+    }, DEFAULT_TX_OPTIONS);
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       throw new Error("A product with this SKU already exists");
@@ -267,5 +268,5 @@ export async function createStockAdjustment(input: StockAdjustmentInput): Promis
         meta: { qtyChange: parsed.qtyChange, reason: parsed.reason, sku: product.sku },
       },
     });
-  });
+  }, DEFAULT_TX_OPTIONS);
 }

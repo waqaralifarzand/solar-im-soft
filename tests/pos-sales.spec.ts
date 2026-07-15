@@ -119,6 +119,55 @@ test.describe("POS and invoicing core", () => {
     await adminPage.goto(`/customers/${customer.id}`);
     await expect(adminPage.getByText("Rs 0.00").first()).toBeVisible();
   });
+
+  test("large cart (8+ line items) completes successfully with every product decremented", async ({ page }) => {
+    // Exercises the batched-decrement rewrite of createInvoice's stock-adjustment loop
+    // (bug-fix session, see SCRATCHPAD.md) — a cart wide enough that the old one-round-trip-
+    // per-line implementation risked the production P2028 transaction timeout this fix
+    // targets.
+    const lineCount = 9;
+    const products = [];
+    for (let i = 0; i < lineCount; i++) {
+      products.push(
+        await createTestProduct(companyId, {
+          name: `Large Cart Item ${i + 1}`,
+          salePrice: 1000 + i * 100,
+          stockQty: 10,
+        }),
+      );
+    }
+
+    await loginAs(page, cashier.email, cashier.password);
+
+    for (const product of products) {
+      await page.getByPlaceholder(/search product/i).fill(product.name);
+      await page.getByPlaceholder(/search product/i).press("Enter");
+    }
+    await expect(page.getByText(`Cart (${lineCount})`)).toBeVisible();
+
+    await page.getByRole("button", { name: /complete sale/i }).click();
+    await expect(page.getByText(/sale complete/i)).toBeVisible();
+
+    for (const product of products) {
+      expect(await getProductStock(product.id)).toBe(9);
+    }
+
+    const invoice = await prisma.invoice.findFirst({
+      where: { companyId, items: { some: { productId: products[0].id } } },
+      include: { items: true },
+    });
+    expect(invoice?.items).toHaveLength(lineCount);
+
+    const adjustments = await prisma.stockAdjustment.findMany({
+      where: { companyId, productId: { in: products.map((p) => p.id) }, reason: "SALE" },
+    });
+    // One StockAdjustment row per product for this sale — each product appears on exactly
+    // one cart line here, so aggregation-by-product doesn't collapse anything further.
+    expect(adjustments).toHaveLength(lineCount);
+    for (const adj of adjustments) {
+      expect(adj.qtyChange).toBe(-1);
+    }
+  });
 });
 
 async function getInvoiceUrlForCustomer(customerId: string): Promise<string> {

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/requireRole";
 import { nextQuoteNo } from "@/lib/generateQuoteNo";
 import { createInvoice } from "@/lib/actions/invoices";
+import { DEFAULT_TX_OPTIONS } from "@/lib/transactionHelpers";
 import {
   createQuotationSchema,
   updateQuotationStatusSchema,
@@ -98,7 +99,7 @@ export async function createQuotation(input: CreateQuotationInput): Promise<{ id
     });
 
     return { id: quotation.id, quoteNo };
-  });
+  }, DEFAULT_TX_OPTIONS);
 }
 
 export async function updateQuotationStatus(quotationId: string, input: UpdateQuotationStatusInput): Promise<void> {
@@ -113,6 +114,9 @@ export async function updateQuotationStatus(quotationId: string, input: UpdateQu
     throw new Error("This quotation has already been converted and its status can't change");
   }
 
+  // Prisma's batch/array $transaction form only accepts { isolationLevel }, not
+  // maxWait/timeout — those apply to the interactive (callback) form only (see
+  // createQuotation above). This batch is two simple writes, no P2028 risk.
   await prisma.$transaction([
     prisma.quotation.update({ where: { id: quotationId }, data: { status: parsed.status } }),
     prisma.auditLog.create({
@@ -172,6 +176,7 @@ export async function convertQuotationToInvoice(
     note: quotation.note ?? undefined,
   });
 
+  // Same batch-form caveat as above — no maxWait/timeout option here, none needed.
   await prisma.$transaction([
     prisma.quotation.update({
       where: { id: quotationId },

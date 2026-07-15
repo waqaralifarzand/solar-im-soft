@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/requireRole";
+import { DEFAULT_TX_OPTIONS } from "@/lib/transactionHelpers";
 import {
   createCustomerSchema,
   customerSchema,
@@ -57,7 +58,7 @@ export async function createCustomer(input: CreateCustomerInput): Promise<{ id: 
     });
 
     return customer.id;
-  });
+  }, DEFAULT_TX_OPTIONS);
 
   return { id: customerId };
 }
@@ -152,7 +153,7 @@ export async function createManualLedgerEntry(input: ManualLedgerEntryInput): Pr
         meta: { amount: parsed.amount, type: parsed.type },
       },
     });
-  });
+  }, DEFAULT_TX_OPTIONS);
 }
 
 export async function receivePayment(input: ReceivePaymentInput): Promise<void> {
@@ -199,5 +200,5 @@ export async function receivePayment(input: ReceivePaymentInput): Promise<void> 
         meta: { amount: parsed.amount, method: parsed.method, paymentId: payment.id },
       },
     });
-  });
+  }, DEFAULT_TX_OPTIONS);
 }

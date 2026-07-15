@@ -81,6 +81,8 @@ export async function getAdminDashboard(companyId: string): Promise<AdminDashboa
   const monthRange = parseReportDateRange();
   const { from: todayFrom, to: todayTo } = todayUtcRange();
 
+  // Prisma's batch/array $transaction form only accepts { isolationLevel }, not
+  // maxWait/timeout — those apply to the interactive (callback) form only.
   const [monthInvoices, products, recentInvoices, customers, balances] = await prisma.$transaction([
     prisma.invoice.findMany({
       where: { companyId, deletedAt: null, createdAt: { gte: monthRange.from, lt: monthRange.to } },
